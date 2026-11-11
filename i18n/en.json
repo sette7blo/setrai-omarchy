@@ -1,0 +1,17 @@
+{
+  "name": "Setrai",
+  "description": "Glanceable Setrai training state in the Omarchy bar.",
+  "strings": {
+    "setrai": "Setrai",
+    "resume": "Resume",
+    "resumeWorkout": "Resume workout",
+    "today": "Today",
+    "week": "Week",
+    "readiness": "Readiness",
+    "last": "Last",
+    "body": "Body",
+    "openSetrai": "Open Setrai",
+    "noActiveProgram": "No active program",
+    "idle": "Setrai is idle. Enable snapshot in .env."
+  }
+}

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Setrai
+GenericName=Fitness Tracker
+Comment=Self-hosted strength and recovery tracker
+Exec=xdg-open @@SETRAI_URL@@
+Icon=setrai
+Terminal=false
+Categories=Health;Sports;
+StartupWMClass=Setrai
+Keywords=fitness;workout;training;strength;

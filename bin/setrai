@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# CLI wrapper for the Setrai Omarchy plugin.
+# Called by the Omarchy menu, the .desktop launcher, and interactively.
+
+set -euo pipefail
+
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/setrai-omarchy/config"
+SETRAI_URL="${SETRAI_URL:-http://localhost:3000}"
+
+if [[ -f "$CONFIG_FILE" ]]; then
+  # shellcheck source=/dev/null
+  . "$CONFIG_FILE"
+fi
+
+api() {
+  local method="$1" path="$2" data="${3:-}"
+  if [[ -n "$data" ]]; then
+    curl -fsS -X "$method" -H 'Content-Type: application/json' -d "$data" "$SETRAI_URL$path"
+  else
+    curl -fsS -X "$method" "$SETRAI_URL$path"
+  fi
+}
+
+cmd_open() {
+  xdg-open "$SETRAI_URL${1:-/}" >/dev/null 2>&1 &
+  disown
+}
+
+cmd_quick() {
+  local payload="${1:-{\}}"
+  local response
+  response="$(api POST /api/quick-workout "$payload")"
+  # Server returns { workout: {...} }; pass back into /start to persist.
+  local started
+  started="$(api POST /api/quick-workout/start "$response")"
+  cmd_open "/"
+  printf '%s\n' "$started"
+}
+
+cmd_body() {
+  local weight="${1:-}"
+  if [[ -z "$weight" ]]; then
+    read -r -p "Body weight (kg): " weight
+  fi
+  local today
+  today="$(date -u +%Y-%m-%d)"
+  api POST /api/body-weight "{\"weightKg\":$weight,\"date\":\"$today\"}"
+  echo
+}
+
+cmd_stats()    { cmd_open "/statistics"; }
+cmd_recovery() { cmd_open "/recovery"; }
+
+usage() {
+  cat <<EOF
+Usage: setrai <command> [args]
+
+Commands:
+  open [path]        Open Setrai PWA in default browser (optional path, e.g. /statistics)
+  quick [json]       Generate + start a quick workout, then open it
+  body [weightKg]    Log body weight for today (prompts if omitted)
+  stats              Open the Statistics page
+  recovery           Open the Recovery page
+
+Config: $CONFIG_FILE (set SETRAI_URL)
+EOF
+}
+
+case "${1:-}" in
+  open)     shift; cmd_open "$@" ;;
+  quick)    shift; cmd_quick "$@" ;;
+  body)     shift; cmd_body "$@" ;;
+  stats)    cmd_stats ;;
+  recovery) cmd_recovery ;;
+  ""|-h|--help) usage ;;
+  *)        usage; exit 2 ;;
+esac
