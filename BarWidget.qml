@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "qml"
 
 BarWidget {
   id: root
@@ -110,11 +111,26 @@ BarWidget {
       anchors.centerIn: parent
       spacing: Style.space(4)
 
-      Text {
-        text: root.hasResume ? "▶" : "⚡"
-        color: root.hasResume ? root.accent : root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+      Item {
+        readonly property real iconSize: Style.font.caption * 1.2
+        implicitWidth: iconSize
+        implicitHeight: iconSize
+
+        Text {
+          anchors.centerIn: parent
+          visible: root.hasResume
+          text: "▶"
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+        DumbbellIcon {
+          anchors.centerIn: parent
+          visible: !root.hasResume
+          size: parent.iconSize
+          iconColor: root.foreground
+          strokeWidth: 2.4
+        }
       }
 
       Text {
