@@ -2,3 +2,6 @@
 *.swp
 *.tmp
 .DS_Store
+
+# install.sh renders this from setrai.desktop.in
+setrai.desktop

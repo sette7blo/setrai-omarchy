@@ -1,10 +1,11 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
-import "qml"
 
 Panel {
   id: root
@@ -14,29 +15,26 @@ Panel {
 
   property var anchorItem: null
   property var hostWidget: null
-  property var snapshot: hostWidget ? hostWidget.snapshot : null
+  readonly property var barIdentity: hostWidget || root
+  readonly property var snapshot: hostWidget ? hostWidget.snapshot : null
 
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color background: bar ? bar.background : Color.background
-  readonly property color accent: bar ? bar.accent : Color.accent
+  readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
+  readonly property color background: bar ? bar.background : Commons.Color.background
+  readonly property color accent: Commons.Color.accent
   readonly property color dim: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.58)
+  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  // Theme reader provides semantic traffic-light colors + extra palette slots
-  // (bgAlt / fgDim) not exposed by the bar primitives. Fully reactive on
-  // theme switch — no restart required.
-  ThemeColors { id: themeColors }
-  readonly property color readyColor: themeColors.readyColor
-  readonly property color midColor: themeColors.midColor
-  readonly property color lowColor: themeColors.lowColor
+  // Semantic traffic-light stays theme-independent — readiness carries
+  // meaning that should survive an accent swap.
+  readonly property color readyColor: "#63d297"
+  readonly property color midColor: "#e5c07b"
+  readonly property color lowColor: "#ff6b7a"
 
-  // Keep opened in sync with hostWidget so clicks on the bar toggle correctly.
-  readonly property bool opened: controller && controller.opened
-
-  function formatKg(value, suffix) {
+  function formatKg(value) {
     if (value === null || value === undefined) return "—"
     var n = Number(value)
     if (!isFinite(n)) return "—"
-    return n.toFixed(1) + (suffix || " kg")
+    return n.toFixed(1) + " kg"
   }
 
   function formatReadiness(value) {
@@ -45,45 +43,37 @@ Panel {
   }
 
   function readinessColor(value) {
-    return themeColors.colorFor(value)
+    if (value === null || value === undefined) return root.dim
+    var v = Number(value)
+    if (v >= 0.75) return root.readyColor
+    if (v >= 0.5) return root.midColor
+    return root.lowColor
   }
 
   function formatRelative(iso) {
     if (!iso) return "—"
     var when = new Date(iso)
-    var now = new Date()
-    var minutes = Math.round((now - when) / 60000)
+    var minutes = Math.round((new Date() - when) / 60000)
     if (minutes < 60) return minutes + "m ago"
     var hours = Math.round(minutes / 60)
     if (hours < 24) return hours + "h ago"
-    var days = Math.round(hours / 24)
-    return days + "d ago"
+    return Math.round(hours / 24) + "d ago"
   }
 
-  function openSetrai() {
-    if (!root.bar) return
-    root.bar.run("xdg-open " + ((root.hostWidget && root.hostWidget.pluginDir)
-      ? root.hostWidget.pluginDir + "/bin/setrai-open.sh"
-      : "http://localhost:3000"))
+  function openSetrai(path) {
+    if (!bar) return
+    bar.run(root.hostWidget.pluginDir + "/bin/setrai-open.sh " + (path || "/"))
+    close()
   }
 
-  function open() { if (controller) controller.show() }
-  function close() { if (controller) controller.hide() }
-  function toggle() { if (controller) controller.toggle() }
-
-  anchor.item: anchorItem
-  anchor.rect.width: anchorItem ? anchorItem.width : 0
-  anchor.rect.height: anchorItem ? anchorItem.height : 0
-
-  implicitWidth: Style.space(220)
-  implicitHeight: content.implicitHeight + Style.space(24)
-
-  Rectangle {
-    anchors.fill: parent
-    color: root.background
-    radius: Style.radius
-    border.width: 1
-    border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.12)
+  KeyboardPanel {
+    id: panel
+    anchorItem: root.anchorItem
+    owner: root.barIdentity
+    bar: root.bar
+    open: root.opened
+    contentWidth: panel.fittedContentWidth(Style.space(280))
+    contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(420))
 
     ColumnLayout {
       id: content
@@ -95,20 +85,22 @@ Panel {
       RowLayout {
         Layout.fillWidth: true
         Text {
-          text: qsTr("Setrai")
+          text: "Setrai"
           color: root.foreground
-          font.pixelSize: Style.font.sizeMedium
-          font.weight: Font.Bold
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          font.bold: true
         }
         Item { Layout.fillWidth: true }
         Text {
           text: root.snapshot && root.snapshot.activeProgram
             ? root.snapshot.activeProgram.name
-            : qsTr("No active program")
+            : "No active program"
           color: root.dim
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
           elide: Text.ElideRight
-          Layout.maximumWidth: Style.space(120)
+          Layout.maximumWidth: Style.space(140)
         }
       }
 
@@ -117,7 +109,7 @@ Panel {
         Layout.fillWidth: true
         visible: root.snapshot && root.snapshot.resumeWorkout
         implicitHeight: resumeRow.implicitHeight + Style.space(12)
-        radius: Style.radius / 2
+        radius: Style.cornerRadius > 0 ? Style.cornerRadius : Style.space(4)
         color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.14)
 
         RowLayout {
@@ -129,63 +121,61 @@ Panel {
           Text {
             text: "▶"
             color: root.accent
-            font.pixelSize: Style.font.sizeMedium
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
           }
           Text {
-            text: qsTr("Resume workout")
+            text: "Resume workout"
             color: root.foreground
-            font.pixelSize: Style.font.sizeSmall
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
             Layout.fillWidth: true
           }
-          MouseArea {
-            anchors.fill: parent
-            onClicked: root.openSetrai()
-            cursorShape: Qt.PointingHandCursor
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: root.openSetrai(root.snapshot.resumeWorkout.url)
+        }
+      }
+
+      // Today / Week stat rows
+      Repeater {
+        model: [
+          {
+            label: "Today",
+            volume: root.snapshot && root.snapshot.today ? root.snapshot.today.volumeKg : null,
+            count:  root.snapshot && root.snapshot.today ? root.snapshot.today.sessionsCompleted : 0
+          },
+          {
+            label: "Week",
+            volume: root.snapshot && root.snapshot.week ? root.snapshot.week.volumeKg : null,
+            count:  root.snapshot && root.snapshot.week ? root.snapshot.week.sessions : 0
           }
-        }
-      }
-
-      // Today stat
-      RowLayout {
-        Layout.fillWidth: true
-        Text {
-          text: qsTr("Today")
-          color: root.dim
-          font.pixelSize: Style.font.sizeSmall
-          Layout.preferredWidth: Style.space(70)
-        }
-        Text {
-          text: root.formatKg(root.snapshot && root.snapshot.today ? root.snapshot.today.volumeKg : null)
-          color: root.foreground
-          font.pixelSize: Style.font.sizeSmall
+        ]
+        RowLayout {
           Layout.fillWidth: true
-        }
-        Text {
-          text: (root.snapshot && root.snapshot.today ? root.snapshot.today.sessionsCompleted : 0) + "× "
-          color: root.dim
-          font.pixelSize: Style.font.sizeSmall
-        }
-      }
-
-      // Week stat
-      RowLayout {
-        Layout.fillWidth: true
-        Text {
-          text: qsTr("Week")
-          color: root.dim
-          font.pixelSize: Style.font.sizeSmall
-          Layout.preferredWidth: Style.space(70)
-        }
-        Text {
-          text: root.formatKg(root.snapshot && root.snapshot.week ? root.snapshot.week.volumeKg : null)
-          color: root.foreground
-          font.pixelSize: Style.font.sizeSmall
-          Layout.fillWidth: true
-        }
-        Text {
-          text: (root.snapshot && root.snapshot.week ? root.snapshot.week.sessions : 0) + "× "
-          color: root.dim
-          font.pixelSize: Style.font.sizeSmall
+          Text {
+            text: modelData.label
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            Layout.preferredWidth: Style.space(70)
+          }
+          Text {
+            text: root.formatKg(modelData.volume)
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            Layout.fillWidth: true
+          }
+          Text {
+            text: modelData.count + "×"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
         }
       }
 
@@ -196,15 +186,17 @@ Panel {
         RowLayout {
           Layout.fillWidth: true
           Text {
-            text: qsTr("Readiness")
+            text: "Readiness"
             color: root.dim
-            font.pixelSize: Style.font.sizeSmall
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
           }
           Item { Layout.fillWidth: true }
           Text {
             text: root.formatReadiness(root.snapshot && root.snapshot.week ? root.snapshot.week.readiness : null)
             color: root.readinessColor(root.snapshot && root.snapshot.week ? root.snapshot.week.readiness : null)
-            font.pixelSize: Style.font.sizeSmall
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
             font.weight: Font.Medium
           }
         }
@@ -230,18 +222,19 @@ Panel {
       RowLayout {
         Layout.fillWidth: true
         Text {
-          text: qsTr("Last")
+          text: "Last"
           color: root.dim
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
           Layout.preferredWidth: Style.space(70)
         }
         Text {
           text: root.snapshot && root.snapshot.lastWorkout
-            ? (root.snapshot.lastWorkout.name || qsTr("workout")) +
-              " · " + root.formatRelative(root.snapshot.lastWorkout.finishedAt)
+            ? (root.snapshot.lastWorkout.name || "workout") + " · " + root.formatRelative(root.snapshot.lastWorkout.finishedAt)
             : "—"
           color: root.foreground
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
           Layout.fillWidth: true
           elide: Text.ElideRight
         }
@@ -252,27 +245,39 @@ Panel {
         Layout.fillWidth: true
         visible: root.snapshot && root.snapshot.body
         Text {
-          text: qsTr("Body")
+          text: "Body"
           color: root.dim
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
           Layout.preferredWidth: Style.space(70)
         }
         Text {
-          text: root.snapshot && root.snapshot.body
-            ? root.formatKg(root.snapshot.body.weightKg)
-            : "—"
+          text: root.snapshot && root.snapshot.body ? root.formatKg(root.snapshot.body.weightKg) : "—"
           color: root.foreground
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
           Layout.fillWidth: true
         }
       }
 
-      // Open button
+      // Idle hint when no snapshot has ever loaded
+      Text {
+        Layout.fillWidth: true
+        visible: !root.snapshot
+        text: "Setrai is idle. Enable snapshot in .env."
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        wrapMode: Text.WordWrap
+        horizontalAlignment: Text.AlignHCenter
+      }
+
+      // Open Setrai button
       Rectangle {
         Layout.fillWidth: true
         Layout.topMargin: Style.space(4)
         implicitHeight: openLabel.implicitHeight + Style.space(10)
-        radius: Style.radius / 2
+        radius: Style.cornerRadius > 0 ? Style.cornerRadius : Style.space(4)
         color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
         border.width: 1
         border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.14)
@@ -280,26 +285,18 @@ Panel {
         Text {
           id: openLabel
           anchors.centerIn: parent
-          text: qsTr("Open Setrai")
+          text: "Open Setrai"
           color: root.foreground
-          font.pixelSize: Style.font.sizeSmall
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
           font.weight: Font.Medium
         }
         MouseArea {
           anchors.fill: parent
-          onClicked: root.openSetrai()
           cursorShape: Qt.PointingHandCursor
+          onClicked: root.openSetrai("/")
         }
       }
     }
-  }
-
-  // Idle state when no snapshot has ever loaded.
-  Text {
-    anchors.centerIn: parent
-    visible: !root.snapshot
-    text: qsTr("Setrai is idle. Enable snapshot in .env.")
-    color: root.dim
-    font.pixelSize: Style.font.sizeSmall
   }
 }
