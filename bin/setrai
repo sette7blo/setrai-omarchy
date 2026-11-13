@@ -4,21 +4,35 @@
 
 set -euo pipefail
 
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/setrai-omarchy/config"
-SETRAI_URL="${SETRAI_URL:-http://localhost:3000}"
+CONNECTION_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/setrai/credentials.json"
 
-if [[ -f "$CONFIG_FILE" ]]; then
-  # shellcheck source=/dev/null
-  . "$CONFIG_FILE"
-fi
+# The plugin's Settings view writes the server address and API key to
+# CONNECTION_FILE. SETRAI_URL and SETRAI_API_KEY in the environment override it.
+connection_field() {
+  local field="$1"
+  [[ -r "$CONNECTION_FILE" ]] || return 0
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg f "$field" '.[$f] // empty' "$CONNECTION_FILE" 2>/dev/null || true
+  else
+    sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$CONNECTION_FILE" | head -n 1
+  fi
+}
+
+SETRAI_URL="${SETRAI_URL:-$(connection_field baseUrl)}"
+SETRAI_URL="${SETRAI_URL:-http://localhost:3000}"
+SETRAI_URL="${SETRAI_URL%/}"
+SETRAI_API_KEY="${SETRAI_API_KEY:-$(connection_field apiKey)}"
 
 api() {
   local method="$1" path="$2" data="${3:-}"
-  if [[ -n "$data" ]]; then
-    curl -fsS -X "$method" -H 'Content-Type: application/json' -d "$data" "$SETRAI_URL$path"
-  else
-    curl -fsS -X "$method" "$SETRAI_URL$path"
+  local -a args=(-fsS -X "$method")
+  if [[ -n "$SETRAI_API_KEY" ]]; then
+    args+=(-H "Authorization: Bearer $SETRAI_API_KEY")
   fi
+  if [[ -n "$data" ]]; then
+    args+=(-H 'Content-Type: application/json' -d "$data")
+  fi
+  curl "${args[@]}" "$SETRAI_URL$path"
 }
 
 cmd_open() {
@@ -43,7 +57,7 @@ cmd_body() {
     read -r -p "Body weight (kg): " weight
   fi
   local today
-  today="$(date -u +%Y-%m-%d)"
+  today="$(date +%Y-%m-%d)"
   api POST /api/body-weight "{\"weightKg\":$weight,\"date\":\"$today\"}"
   echo
 }
@@ -62,7 +76,10 @@ Commands:
   stats              Open the Statistics page
   recovery           Open the Recovery page
 
-Config: $CONFIG_FILE (set SETRAI_URL)
+Connection:
+  $CONNECTION_FILE
+  (server address and API key, written by the plugin's Settings view;
+  SETRAI_URL and SETRAI_API_KEY in the environment override it)
 EOF
 }
 

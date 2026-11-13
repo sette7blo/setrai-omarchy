@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent installer for the setrai Omarchy plugin.
-# Phases 2-5: bar widget, menu entries, agent skills, theme sync.
+# Links the bar widget, CLI, launcher, menu entries and agent skills.
 
 set -euo pipefail
 
@@ -15,16 +15,21 @@ CLI_LINK="$HOME/.local/bin/setrai"
 DESKTOP_LINK="$HOME/.local/share/applications/setrai.desktop"
 MENU_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
 HOOK_LINK="$CONFIG_HOME/omarchy/hooks/post-boot.d/50-setrai.sh"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 CONFIG_FILE="$CONFIG_HOME/setrai-omarchy/config"
+CONNECTION_DIR="$STATE_HOME/omarchy/setrai"
+CONNECTION_FILE="$CONNECTION_DIR/credentials.json"
 
-SETRAI_URL="${SETRAI_URL:-http://localhost:3000}"
+SETRAI_URL=""
 AUTOSTART=false
 COMPOSE_PATH=""
 
 usage() {
   cat <<EOF
 Usage: $0 [--setrai-url URL] [--autostart --compose /path/to/compose.yml]
-Defaults: --setrai-url http://localhost:3000
+
+--setrai-url sets the server address the plugin and the setrai CLI share.
+It can be changed later in the plugin's Settings view.
 EOF
 }
 
@@ -44,6 +49,11 @@ while [[ $# -gt 0 ]]; do
       usage; exit 2 ;;
   esac
 done
+
+if [[ -n "$SETRAI_URL" && ! "$SETRAI_URL" =~ ^https?://[^[:space:]\"\\]+$ ]]; then
+  echo "--setrai-url must be an http:// or https:// address" >&2
+  exit 2
+fi
 
 if $AUTOSTART && [[ -z "$COMPOSE_PATH" ]]; then
   echo "--autostart requires --compose /path/to/compose.yml" >&2
@@ -70,10 +80,32 @@ write_config() {
   mkdir -p "$(dirname "$CONFIG_FILE")"
   cat > "$CONFIG_FILE" <<EOF
 # Managed by $PLUGIN_ID install.sh
-SETRAI_URL=$SETRAI_URL
 SETRAI_COMPOSE=${COMPOSE_PATH:-}
 EOF
   log "wrote $CONFIG_FILE"
+}
+
+# The server address lives with the API key in the connection file, which the
+# plugin's Settings view also writes. Only touch it when --setrai-url is given.
+write_connection() {
+  [[ -n "$SETRAI_URL" ]] || return 0
+  local url="${SETRAI_URL%/}"
+  mkdir -p "$CONNECTION_DIR"
+  chmod 700 "$CONNECTION_DIR"
+  if [[ -s "$CONNECTION_FILE" ]]; then
+    if ! command -v jq >/dev/null 2>&1; then
+      log "jq not found; set the server address in the plugin's Settings view"
+      return
+    fi
+    local tmp
+    tmp="$(mktemp -p "$CONNECTION_DIR" .tmp.XXXXXX)"
+    jq --arg url "$url" '.baseUrl = $url' "$CONNECTION_FILE" > "$tmp"
+    chmod 600 "$tmp"
+    mv -f "$tmp" "$CONNECTION_FILE"
+  else
+    (umask 077; printf '{\n  "baseUrl": "%s",\n  "apiKey": ""\n}\n' "$url" > "$CONNECTION_FILE")
+  fi
+  log "set server address in $CONNECTION_FILE"
 }
 
 install_plugin_link() {
@@ -88,9 +120,9 @@ install_cli() {
 }
 
 install_desktop() {
-  # .desktop files can't expand env vars; template the Exec line now.
+  # The launcher goes through the CLI so it follows the configured address.
   local tmp="$PROJECT_DIR/setrai.desktop"
-  sed "s|@@SETRAI_URL@@|$SETRAI_URL|g" "$PROJECT_DIR/setrai.desktop.in" > "$tmp"
+  sed "s|@@SETRAI_CLI@@|$CLI_LINK|g" "$PROJECT_DIR/setrai.desktop.in" > "$tmp"
   link_path "$tmp" "$DESKTOP_LINK"
   log "linked .desktop → $DESKTOP_LINK"
 }
@@ -140,6 +172,7 @@ register_omarchy() {
 main() {
   log "plugin dir: $PROJECT_DIR"
   write_config
+  write_connection
   install_plugin_link
   install_cli
   install_desktop
@@ -147,7 +180,7 @@ main() {
   install_hook
   install_skills
   register_omarchy
-  log "done. Left-click the Setrai pill on the bar; Super → Setrai to launch."
+  log "done. Click the Setrai icon on the bar and open Settings to connect."
 }
 
 main "$@"

@@ -2,10 +2,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
+import "qml"
+import "Model.js" as Model
 
 Panel {
   id: root
@@ -15,55 +16,71 @@ Panel {
 
   property var anchorItem: null
   property var hostWidget: null
+  property var service: null
+  property bool showSettings: false
+
   readonly property var barIdentity: hostWidget || root
-  readonly property var snapshot: hostWidget ? hostWidget.snapshot : null
 
   readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
-  readonly property color background: bar ? bar.background : Commons.Color.background
   readonly property color accent: Commons.Color.accent
-  readonly property color dim: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.58)
+  readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+  readonly property real labelWidth: Style.space(76)
 
-  // Semantic traffic-light stays theme-independent — readiness carries
-  // meaning that should survive an accent swap.
-  readonly property color readyColor: "#63d297"
-  readonly property color midColor: "#e5c07b"
-  readonly property color lowColor: "#ff6b7a"
+  readonly property bool configured: service ? service.configured === true : false
+  readonly property var openWorkout: service ? service.openWorkout : null
+  readonly property bool hasResume: !!openWorkout
+  readonly property bool hasReadiness: configured && !!service && service.readiness !== null
+  readonly property bool hasBody: configured && !!service && !!service.bodyEntries && service.bodyEntries.length > 0
+  readonly property bool settingsBlocked: settingsLoader.item ? settingsLoader.item.editorOpen === true : false
 
-  function formatKg(value) {
-    if (value === null || value === undefined) return "—"
-    var n = Number(value)
-    if (!isFinite(n)) return "—"
-    return n.toFixed(1) + " kg"
+  readonly property string notice: {
+    if (!service) return ""
+    if (!configured) return "Connect your Setrai server to see training here."
+    if (service.status === "unauthorized") return "Setrai did not accept the API key. Paste a new one in settings."
+    if (service.status === "unreachable") return "Setrai is not responding. Check that the server is running."
+    if (service.status === "error") return service.statusDetail || "Setrai returned an error."
+    return ""
   }
 
-  function formatReadiness(value) {
-    if (value === null || value === undefined) return "—"
-    return Math.round(Number(value) * 100) + "%"
+  readonly property string heroMeta: {
+    if (showSettings) return "Settings"
+    if (!configured) return "Not connected"
+    if (hasResume) return openWorkout.programName
+      ? "Workout in progress: " + openWorkout.programName
+      : "Workout in progress"
+    return ""
   }
 
-  function readinessColor(value) {
-    if (value === null || value === undefined) return root.dim
-    var v = Number(value)
-    if (v >= 0.75) return root.readyColor
-    if (v >= 0.5) return root.midColor
-    return root.lowColor
+  readonly property string lastWorkoutText: {
+    var when = service ? Model.relativeDay(service.lastWorkoutAt) : ""
+    return when ? "Last workout " + when : ""
   }
 
-  function formatRelative(iso) {
-    if (!iso) return "—"
-    var when = new Date(iso)
-    var minutes = Math.round((new Date() - when) / 60000)
-    if (minutes < 60) return minutes + "m ago"
-    var hours = Math.round(minutes / 60)
-    if (hours < 24) return hours + "h ago"
-    return Math.round(hours / 24) + "d ago"
+  Connections {
+    target: root
+    function onOpenedChanged() {
+      if (root.service) root.service.panelOpen = root.opened
+      if (!root.opened) root.showSettings = false
+    }
   }
 
   function openSetrai(path) {
-    if (!bar) return
+    if (!bar || !root.hostWidget) return
     bar.run(root.hostWidget.pluginDir + "/bin/setrai-open.sh " + (path || "/"))
     close()
+  }
+
+  Component {
+    id: settingsComp
+    SettingsView {
+      width: body.width
+      service: root.service
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onCloseSettings: root.showSettings = false
+    }
   }
 
   KeyboardPanel {
@@ -72,228 +89,185 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    contentWidth: panel.fittedContentWidth(Style.space(280))
-    contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(420))
+    contentWidth: panel.fittedContentWidth(Style.space(300))
+    contentHeight: panel.fittedContentHeight(body.implicitHeight, Style.space(640))
 
-    ColumnLayout {
-      id: content
+    PanelKeyCatcher {
       anchors.fill: parent
-      anchors.margins: Style.space(12)
-      spacing: Style.space(10)
+      blocked: root.settingsBlocked
+      onCloseRequested: root.close()
+    }
 
-      // Header
-      RowLayout {
-        Layout.fillWidth: true
+    // KeyboardPanel already pads its content; the column only sizes itself
+    // so implicitHeight matches what is drawn and nothing gets clipped.
+    Column {
+      id: body
+      width: parent.width
+      spacing: Style.spacing.xxl
+
+      PanelHero {
+        title: "Setrai"
+        meta: root.heroMeta
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        iconComponent: Component {
+          DumbbellIcon {
+            size: Style.font.display
+            iconColor: root.foreground
+            strokeWidth: 1.75
+          }
+        }
+        trailingControl: Component {
+          PanelActionButton {
+            iconText: root.showSettings ? "\u{f0156}" : "\u{f0493}"
+            tooltipText: root.showSettings ? "Close settings" : "Settings"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.showSettings = !root.showSettings
+          }
+        }
+      }
+
+      PanelSeparator { foreground: root.foreground }
+
+      Loader {
+        id: settingsLoader
+        width: parent.width
+        active: root.showSettings
+        visible: active
+        sourceComponent: settingsComp
+      }
+
+      // ---- Connection notice ----
+      Column {
+        width: parent.width
+        spacing: Style.spacing.lg
+        visible: !root.showSettings && root.notice !== ""
+
         Text {
-          text: "Setrai"
+          textFormat: Text.PlainText
+          width: parent.width
+          text: root.notice
           color: root.foreground
+          wrapMode: Text.WordWrap
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
-          font.bold: true
         }
-        Item { Layout.fillWidth: true }
-        Text {
-          text: root.snapshot && root.snapshot.activeProgram
-            ? root.snapshot.activeProgram.name
-            : "No active program"
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          elide: Text.ElideRight
-          Layout.maximumWidth: Style.space(140)
+        Button {
+          text: root.configured ? "Open settings" : "Connect"
+          bordered: true
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onClicked: root.showSettings = true
         }
       }
 
-      // Resume banner (only when a session is open)
-      Rectangle {
-        Layout.fillWidth: true
-        visible: root.snapshot && root.snapshot.resumeWorkout
-        implicitHeight: resumeRow.implicitHeight + Style.space(12)
-        radius: Style.cornerRadius > 0 ? Style.cornerRadius : Style.space(4)
-        color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.14)
-
-        RowLayout {
-          id: resumeRow
-          anchors.fill: parent
-          anchors.margins: Style.space(8)
-          spacing: Style.space(8)
-
-          Text {
-            text: "▶"
-            color: root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-          }
-          Text {
-            text: "Resume workout"
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            Layout.fillWidth: true
-          }
-        }
-
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: root.openSetrai(root.snapshot.resumeWorkout.url)
-        }
+      // ---- Readiness ----
+      ReadinessView {
+        visible: !root.showSettings && root.hasReadiness
+        readiness: root.service ? root.service.readiness : null
+        detail: root.lastWorkoutText
+        foreground: root.foreground
+        dim: root.dim
+        fontFamily: root.fontFamily
+        labelWidth: root.labelWidth
       }
 
-      // Today / Week stat rows
-      Repeater {
-        model: [
-          {
-            label: "Today",
-            volume: root.snapshot && root.snapshot.today ? root.snapshot.today.volumeKg : null,
-            count:  root.snapshot && root.snapshot.today ? root.snapshot.today.sessionsCompleted : 0
-          },
-          {
-            label: "Week",
-            volume: root.snapshot && root.snapshot.week ? root.snapshot.week.volumeKg : null,
-            count:  root.snapshot && root.snapshot.week ? root.snapshot.week.sessions : 0
+      PanelSeparator {
+        foreground: root.foreground
+        visible: !root.showSettings && root.hasReadiness
+      }
+
+      // ---- Training ----
+      Column {
+        width: parent.width
+        spacing: Style.spacing.md
+        visible: !root.showSettings && root.configured
+
+        Repeater {
+          model: {
+            var svc = root.service
+            var rows = [
+              { label: "This week", value: Model.formatSessions(svc ? svc.sessionsThisWeek : 0) },
+              { label: "Volume", value: Model.formatVolume(svc ? svc.weekVolumeKg : 0) }
+            ]
+            if (!root.hasReadiness && root.lastWorkoutText !== "")
+              rows.push({ label: "Last", value: root.lastWorkoutText })
+            return rows
           }
-        ]
-        RowLayout {
-          Layout.fillWidth: true
-          Text {
-            text: modelData.label
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            Layout.preferredWidth: Style.space(70)
-          }
-          Text {
-            text: root.formatKg(modelData.volume)
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            Layout.fillWidth: true
-          }
-          Text {
-            text: modelData.count + "×"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
+          delegate: RowLayout {
+            required property var modelData
+            width: parent.width
+            spacing: Style.spacing.xxl
+
+            Text {
+              textFormat: Text.PlainText
+              Layout.preferredWidth: root.labelWidth
+              text: modelData.label
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+            Text {
+              textFormat: Text.PlainText
+              Layout.fillWidth: true
+              text: modelData.value
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              elide: Text.ElideRight
+            }
           }
         }
       }
 
-      // Readiness bar
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: Style.space(4)
-        RowLayout {
-          Layout.fillWidth: true
-          Text {
-            text: "Readiness"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-          }
-          Item { Layout.fillWidth: true }
-          Text {
-            text: root.formatReadiness(root.snapshot && root.snapshot.week ? root.snapshot.week.readiness : null)
-            color: root.readinessColor(root.snapshot && root.snapshot.week ? root.snapshot.week.readiness : null)
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            font.weight: Font.Medium
-          }
-        }
-        Rectangle {
-          Layout.fillWidth: true
-          implicitHeight: 4
-          radius: 2
-          color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
-          Rectangle {
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: parent.width * Math.max(0, Math.min(1,
-              root.snapshot && root.snapshot.week ? Number(root.snapshot.week.readiness || 0) : 0))
-            radius: parent.radius
-            color: root.readinessColor(root.snapshot && root.snapshot.week ? root.snapshot.week.readiness : null)
-            Behavior on width { NumberAnimation { duration: 240 } }
-          }
-        }
+      PanelSeparator {
+        foreground: root.foreground
+        visible: !root.showSettings && root.hasBody
       }
 
-      // Last workout
+      // ---- Body weight ----
+      BodyChart {
+        visible: !root.showSettings && root.hasBody
+        entries: root.service ? root.service.bodyEntries : []
+        changeKg: root.service ? root.service.bodyChangeKg : null
+        foreground: root.foreground
+        dim: root.dim
+        accent: root.accent
+        fontFamily: root.fontFamily
+      }
+
+      PanelSeparator {
+        foreground: root.foreground
+        visible: !root.showSettings && root.configured
+      }
+
+      // ---- Actions ----
       RowLayout {
-        Layout.fillWidth: true
-        Text {
-          text: "Last"
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          Layout.preferredWidth: Style.space(70)
-        }
-        Text {
-          text: root.snapshot && root.snapshot.lastWorkout
-            ? (root.snapshot.lastWorkout.name || "workout") + " · " + root.formatRelative(root.snapshot.lastWorkout.finishedAt)
-            : "—"
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
+        width: parent.width
+        spacing: Style.spacing.lg
+        visible: !root.showSettings && root.configured
+
+        Button {
           Layout.fillWidth: true
-          elide: Text.ElideRight
+          text: root.hasResume ? "Resume workout" : "Open Setrai"
+          bordered: true
+          selected: root.hasResume
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onClicked: root.hasResume
+            ? root.openSetrai(root.openWorkout.url)
+            : root.openSetrai("/")
         }
-      }
-
-      // Body weight
-      RowLayout {
-        Layout.fillWidth: true
-        visible: root.snapshot && root.snapshot.body
-        Text {
-          text: "Body"
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          Layout.preferredWidth: Style.space(70)
-        }
-        Text {
-          text: root.snapshot && root.snapshot.body ? root.formatKg(root.snapshot.body.weightKg) : "—"
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          Layout.fillWidth: true
-        }
-      }
-
-      // Idle hint when no snapshot has ever loaded
-      Text {
-        Layout.fillWidth: true
-        visible: !root.snapshot
-        text: "Setrai is idle. Enable snapshot in .env."
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-        horizontalAlignment: Text.AlignHCenter
-      }
-
-      // Open Setrai button
-      Rectangle {
-        Layout.fillWidth: true
-        Layout.topMargin: Style.space(4)
-        implicitHeight: openLabel.implicitHeight + Style.space(10)
-        radius: Style.cornerRadius > 0 ? Style.cornerRadius : Style.space(4)
-        color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
-        border.width: 1
-        border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.14)
-
-        Text {
-          id: openLabel
-          anchors.centerIn: parent
+        Button {
+          visible: root.hasResume
           text: "Open Setrai"
-          color: root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          font.weight: Font.Medium
-        }
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
+          bordered: true
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
           onClicked: root.openSetrai("/")
         }
       }

@@ -1,24 +1,23 @@
 # setrai-omarchy
 
-Omarchy plugin for [Setrai](https://github.com/sette7blo/setrai) — a bar pill
-that glances at today's training volume (or resumes an open session), a
-popover with weekly stats and recovery readiness, Omarchy menu entries, a
-launcher `.desktop`, and agent skills so Claude Code / Codex / Copilot can
-start workouts and log body weight by natural language.
+Omarchy plugin for [Setrai](https://github.com/sette7blo/setrai): a bar icon
+with a popover showing readiness, this week's training and body weight, a
+one-tap resume for an open workout, Omarchy menu entries, a launcher
+`.desktop`, and agent skills so Claude Code, Codex or Copilot can start
+workouts and log body weight from natural language.
 
-Setrai runs independently (PWA on iOS, local Docker on this host); the
-plugin reads a snapshot file Setrai writes. No server migration, no iOS
-regression.
+Setrai runs on its own (PWA on iOS, Docker on a server). The plugin talks to
+its regular REST API with a Setrai API key you paste into the plugin's
+Settings view. It only fetches and displays: every figure comes from the
+server as-is.
 
 ## Requirements
 
 - Omarchy **Quattro** (v4.5+) with the plugin runtime
-- Setrai with the Omarchy snapshot writer enabled:
-  ```
-  SETRAI_OMARCHY_SNAPSHOT_ENABLED=true
-  # optional: SETRAI_OMARCHY_SNAPSHOT_PATH=/custom/path/snapshot.json
-  ```
-  Default snapshot path: `$XDG_DATA_HOME/setrai/snapshot.json`.
+- Setrai v0.8.0 or newer (API keys, `readiness` and `bodyWeightChangeKg`).
+  Create a key under
+  **Settings > API keys** in the Setrai web UI. The key looks like
+  `setrai_<43 chars>` and only the plaintext value is shown once.
 
 ## Install
 
@@ -40,6 +39,12 @@ The installer is idempotent — re-running it refreshes symlinks without
 destructive side effects (existing non-symlink files are backed up with a
 timestamp suffix).
 
+After install, click the bar icon, then the gear icon. Enter the server
+address and API key, click **Test connection**, then **Save**. Both are
+written to `~/.local/state/omarchy/setrai/credentials.json` (mode 600), the
+one place the plugin, the CLI, the menu, the launcher and the agent skills
+read them from. `--setrai-url` only pre-fills the address there.
+
 ## What gets installed
 
 | Location | What |
@@ -49,17 +54,35 @@ timestamp suffix).
 | `~/.local/share/applications/setrai.desktop` | Launcher entry |
 | `~/.config/omarchy/extensions/omarchy-menu-setrai.jsonc` | Menu extension |
 | `~/.config/omarchy/hooks/post-boot.d/50-setrai.sh` | Autostart (optional, with `--autostart`) |
-| `~/.config/setrai-omarchy/config` | URL + compose path |
+| `~/.config/setrai-omarchy/config` | Compose path for the optional autostart hook |
+| `~/.local/state/omarchy/setrai/credentials.json` | Server address and API key (mode 600, written by the Settings view) |
 | `~/.claude/skills/setrai-*`, `~/.codex/skills/setrai-*`, etc. | Agent skills (only if the agent dir exists) |
 
-## Bar pill
+## Bar icon
 
-- Shows `⚡ <today's volume>` or `▶ Resume` if a session is open.
-- **Left-click** → popover with: week volume, sessions, readiness bar, last
-  workout, body weight.
-- **Right-click** → opens this README.
-- If the snapshot file is missing or Setrai isn't running, the panel shows
-  an idle message and keeps rendering (no crash).
+- A dumbbell icon. It takes the accent colour while a workout is open and
+  is dimmed until the plugin is connected.
+- The tooltip shows the readiness, or the open workout's program.
+- **Left-click** opens the popover. **Right-click** opens this README.
+
+## Popover
+
+From top to bottom:
+
+- **Header**: `Workout in progress` and the program name while a session is
+  open. The gear switches to the settings form.
+- **Readiness**: the overall figure from `GET /api/recovery`, and when you
+  last trained.
+- **This week**: sessions (`trainingFrequency.thisWeek`) and volume
+  (`weeklyVolume`) from `GET /api/statistics`.
+- **Body weight**: latest entry, the total change (`bodyWeightChangeKg`)
+  and a trend line over the full history.
+- **Open Setrai**, or **Resume workout** when a session is open.
+
+The plugin polls `GET /api/sessions`, `GET /api/recovery` and
+`GET /api/statistics` every 30 seconds by default (configurable), and when
+the popover opens. If the server is unreachable or the key is rejected, the
+popover says so and offers a button to open settings.
 
 ## Omarchy menu
 
@@ -78,15 +101,16 @@ A `Fitness` submenu:
 setrai open              # open the PWA
 setrai open /statistics  # open a specific page
 setrai quick             # generate + start a quick workout
-setrai body 72.4         # log 72.4 kg today (prompts if omitted)
+setrai body 72.4         # log 72.4 kg for today's local date (prompts if omitted)
 setrai stats             # open statistics
 setrai recovery          # open recovery
 ```
 
-Config: `~/.config/setrai-omarchy/config` sets `SETRAI_URL` and
-`SETRAI_COMPOSE`.
+The CLI reads the server address and API key from
+`~/.local/state/omarchy/setrai/credentials.json`. `SETRAI_URL` and
+`SETRAI_API_KEY` in the environment override them for one-off runs.
 
-## Agent skills (Phase 4)
+## Agent skills
 
 Install adds `SKILL.md` symlinks to whichever agent homes exist
 (`~/.claude/skills/`, `~/.codex/skills/`, `~/.agents/skills/`,
@@ -95,22 +119,17 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 - **setrai-start-workout** — start a session from a saved program
 - **setrai-quick-workout** — generate and start a constrained workout
 - **setrai-log-body** — record body-weight
-- **setrai-show-stats** — summarize volume / streak / PRs / body trend
-- **setrai-recovery** — show per-muscle readiness
+- **setrai-show-stats** — summarize volume, streak, records and body weight
+- **setrai-recovery** — show readiness and per-muscle recovery
 
-Skills assume `SETRAI_AUTH_ENABLED=false` and `localhost` — both fine on a
-single-user box. If auth is turned on later, skills will need an API token
-mechanism.
+The skills read the same connection file, so they use whatever address and
+key you saved in the plugin's Settings view.
 
 ## Theme
 
-The pill and popover read `bar.foreground` / `bar.background` /
-`bar.accent` from the Omarchy Quattro runtime, so theme switches propagate
-automatically. The semantic traffic-light for readiness
-(green / amber / red) is intentionally theme-independent so meaning
-survives an accent swap. `qml/ThemeColors.qml` additionally tails
-`~/.local/state/omarchy/current/theme/colors.toml` for extra palette slots
-(`fgDim`, `bgAlt`).
+The icon and popover use the active Omarchy theme's foreground, accent and
+font, and the shell's own panel components, so they follow theme and font
+switches automatically.
 
 ## Uninstall
 
@@ -118,19 +137,26 @@ survives an accent swap. `qml/ThemeColors.qml` additionally tails
 ./uninstall.sh
 ```
 
-Removes all symlinks, menu entries, config dir and the plugin registration
-with Omarchy. Does **not** touch Setrai server data or the snapshot file.
+Removes all symlinks, menu entries, the config dir, the connection file
+and the header-cache dir, plus the plugin registration with Omarchy.
+Does **not** touch the Setrai server or any API keys you've created
+server-side — revoke those under **Settings > API keys** in the Setrai
+web UI if you want them gone.
 
 ## Repository layout
 
 ```
-manifest.json              Plugin manifest (schemaVersion:1, kinds:[bar-widget])
-BarWidget.qml              The bar pill
+manifest.json              Plugin manifest (kinds:[service, bar-widget])
+Service.qml                Background poller + connection store
+BarWidget.qml              The bar icon
 Panel.qml                  The click-to-open popover
-qml/ThemeColors.qml        Reactive palette reader + traffic-light constants
+ReadinessView.qml          Overall readiness figure
+BodyChart.qml              Latest body weight, total change, trend line
+SettingsView.qml           Server address, API key and refresh form
+Model.js                   Pure-JS helpers (parsing and formatting only)
 bin/setrai                 CLI wrapper used by the menu + desktop entry
-bin/setrai-open.sh         Thin URL-opener the Panel shells out to
-setrai.desktop.in          Launcher template (install.sh substitutes URL)
+bin/setrai-open.sh         URL opener the Panel shells out to (calls bin/setrai)
+setrai.desktop.in          Launcher template (install.sh fills in the CLI path)
 extensions/omarchy-menu.jsonc   Menu fragment
 hooks/post-boot.sh         Optional Docker-stack autostart
 agent-skill/               Five SKILL.md files for AI coaches

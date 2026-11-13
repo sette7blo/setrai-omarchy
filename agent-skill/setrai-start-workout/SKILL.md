@@ -9,8 +9,11 @@ Setrai is a self-hosted training tracker running on this machine. Use this skill
 when the user wants to **start a training session** from a program they already
 have saved.
 
-Assumes `setrai` is reachable at `localhost:$PORT` (read `SETRAI_URL` from
-`~/.config/setrai-omarchy/config`, default `http://localhost:3000`). No auth.
+Connection: read `baseUrl` and `apiKey` from
+`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
+Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
+them; the address defaults to `http://localhost:3000`. Send
+`Authorization: Bearer <apiKey>` on every request.
 
 ## When to invoke
 
@@ -21,11 +24,11 @@ Assumes `setrai` is reachable at `localhost:$PORT` (read `SETRAI_URL` from
 ## Steps
 
 1. **List saved programs** to find the one the user asked for.
-   `GET $SETRAI_URL/api/programs` → `{ programs: [{ id, name, exercises, ... }] }`
+   `GET <baseUrl>/api/programs` → `{ programs: [{ id, name, exercises, ... }] }`
    Match on `name` (case-insensitive substring is fine). If multiple match,
    ask the user to disambiguate.
 2. **Start a session** against that program.
-   `POST $SETRAI_URL/api/sessions` with body `{ "programId": <id> }`
+   `POST <baseUrl>/api/sessions` with body `{ "programId": <id> }`
    Server response: `201 { session: { id, programName, plannedExercises, ... } }`.
 3. **Confirm to the user**: name of the program, number of planned exercises,
    and the resume URL (`/sessions/<id>`). Offer to open the browser via

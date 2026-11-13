@@ -3,15 +3,14 @@
   "description": "Glanceable Setrai training state in the Omarchy bar.",
   "strings": {
     "setrai": "Setrai",
-    "resume": "Resume",
     "resumeWorkout": "Resume workout",
-    "today": "Today",
-    "week": "Week",
+    "workoutInProgress": "Workout in progress",
     "readiness": "Readiness",
+    "thisWeek": "This week",
+    "volume": "Volume",
     "last": "Last",
-    "body": "Body",
+    "bodyWeight": "Body weight",
     "openSetrai": "Open Setrai",
-    "noActiveProgram": "No active program",
-    "idle": "Setrai is idle. Enable snapshot in .env."
+    "idle": "Set your Setrai server and API key to get started."
   }
 }
