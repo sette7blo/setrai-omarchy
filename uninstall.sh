@@ -41,7 +41,7 @@ remove_link "$HOOK_LINK"
 # Agent skill symlinks.
 for agent_home in "$HOME/.claude" "$HOME/.codex" "$HOME/.agents" "$HOME/.copilot"; do
   [[ -d "$agent_home/skills" ]] || continue
-  for skill in setrai-start-workout setrai-log-body setrai-show-stats setrai-quick-workout setrai-recovery; do
+  for skill in setrai-start-workout setrai-log-body setrai-show-stats setrai-quick-workout setrai-recovery setrai-create-program setrai-weekly-review; do
     remove_link "$agent_home/skills/$skill"
   done
 done
