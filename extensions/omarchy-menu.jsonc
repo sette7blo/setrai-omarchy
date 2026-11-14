@@ -7,5 +7,6 @@
   "fitness.start": { "icon": "󰐊", "label": "Start workout", "action": "setrai start" },
   "fitness.quick": { "icon": "󰑮", "label": "Quick workout", "action": "setrai quick" },
   "fitness.body": { "icon": "󰑴", "label": "Log body weight", "action": "setrai body" },
+  "fitness.coach": { "icon": "󰚩", "label": "Ask coach", "description": "Review your training with your default agent", "when": "[[ -n \"$(omarchy-default-agent 2>/dev/null)\" ]]", "action": "setrai coach" },
   "fitness.stats": { "icon": "󰄪", "label": "Show stats", "action": "setrai stats" }
 }

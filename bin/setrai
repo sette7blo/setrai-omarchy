@@ -201,6 +201,29 @@ cmd_body() {
   fi
 }
 
+# Opens the default Omarchy agent as a training coach. The skills are named by
+# path so an agent that does not discover them on its own can still read them.
+cmd_coach() {
+  if ! command -v omarchy-agent >/dev/null 2>&1; then
+    report "The coach needs Omarchy's agent launcher (omarchy agent)."
+    return 1
+  fi
+  if [[ -z "$(omarchy-default-agent 2>/dev/null || true)" ]]; then
+    report "Choose a default agent first: omarchy default agent <name>"
+    return 1
+  fi
+  local skills question="$*"
+  skills="$(dirname -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")")/agent-skill"
+  local prompt="Act as my strength coach, working from my Setrai training data. The Setrai skills are in $skills, one folder each: read the SKILL.md of the ones you need before calling the API. They say how to connect ($CONNECTION_FILE). Reading is fine without asking. Ask me before anything that writes to Setrai, such as saving a program, starting a workout or logging weight."
+  if [[ -n "$question" ]]; then
+    prompt+=" My request: $question"
+  else
+    prompt+=" Start with setrai-weekly-review: give me a short read of where my training stands, then ask what I want to work on."
+  fi
+  omarchy-agent --prompt "$prompt" >/dev/null 2>&1 &
+  disown
+}
+
 cmd_stats()    { cmd_open "/statistics"; }
 cmd_recovery() { cmd_open "/recovery"; }
 
@@ -213,6 +236,7 @@ Commands:
   start [programId]  Start a workout from a saved program (asks which if omitted)
   quick [json]       Generate + start a quick workout, then open it
   body [weight]      Log body weight for today in your profile's unit (asks if omitted)
+  coach [question]   Open your default Omarchy agent as a training coach
   stats              Open the Statistics page
   recovery           Open the Recovery page
 
@@ -228,6 +252,7 @@ case "${1:-}" in
   start)    shift; cmd_start "$@" ;;
   quick)    shift; cmd_quick "$@" ;;
   body)     shift; cmd_body "$@" ;;
+  coach)    shift; cmd_coach "$@" ;;
   stats)    cmd_stats ;;
   recovery) cmd_recovery ;;
   ""|-h|--help) usage ;;

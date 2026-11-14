@@ -100,6 +100,7 @@ A `Fitness` submenu:
 | Start workout | `setrai start` |
 | Quick workout | `setrai quick` |
 | Log body weight | `setrai body` |
+| Ask coach | `setrai coach` |
 | Show stats | `setrai stats` |
 
 ## CLI
@@ -112,6 +113,7 @@ setrai open /statistics  # open a specific page
 setrai quick             # generate + start a quick workout
 setrai body 72.4         # log today's weight in your profile's unit (asks if omitted)
 setrai body 160lb        # a trailing kg or lb overrides the unit
+setrai coach             # open your default agent as a training coach
 setrai stats             # open statistics
 setrai recovery          # open recovery
 ```
@@ -131,6 +133,17 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 - **setrai-log-body** — record body-weight
 - **setrai-show-stats** — summarize volume, streak, records and body weight
 - **setrai-recovery** — show readiness and per-muscle recovery
+- **setrai-create-program** — design a program with you and save it
+- **setrai-weekly-review** — read the week's sessions and suggest what to adjust
+
+### Coach
+
+"Ask coach" in the Fitness menu, or `setrai coach`, opens your default Omarchy
+agent (`omarchy default agent <name>`) in a terminal with a prompt that points
+it at these skills and starts with a weekly review. `setrai coach "<question>"`
+starts from your question instead. The entry is hidden until a default agent is
+set. Setrai has no AI of its own: your training data goes only to the agent
+you chose, and the agent asks before it writes anything.
 
 The skills read the same connection file, so they use whatever address and
 key you saved in the plugin's Settings view.
