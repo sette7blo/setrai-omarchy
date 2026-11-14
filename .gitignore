@@ -5,3 +5,6 @@
 
 # install.sh renders this from setrai.desktop.in
 setrai.desktop
+
+# Local agent notes, never pushed
+CLAUDE.md

@@ -2,20 +2,30 @@
   "schemaVersion": 1,
   "id": "io.github.sette7blo.setrai",
   "name": "Setrai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "sette7blo",
   "license": "MIT",
-  "description": "Glanceable Setrai training state in the Omarchy bar: today's volume, resume-workout, weekly readiness and body weight.",
+  "description": "Glanceable Setrai training state in the Omarchy bar: readiness, this week's sessions and volume, body weight, and a one-tap resume for an open workout.",
   "homepage": "https://github.com/sette7blo/setrai-omarchy",
-  "kinds": ["bar-widget"],
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
   "entryPoints": {
+    "service": "Service.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "Setrai",
-    "description": "Today's training volume or a one-tap resume for an unfinished workout.",
+    "description": "Setrai readiness at a glance, with a one-tap resume for an open workout.",
     "category": "Health",
-    "aliases": ["setrai", "fitness", "workout", "training"],
+    "aliases": [
+      "setrai",
+      "fitness",
+      "workout",
+      "training"
+    ],
     "allowMultiple": false,
     "defaultSection": "right"
   }

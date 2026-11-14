@@ -8,12 +8,15 @@ description: Generate a Setrai "quick workout" that respects muscle recovery, th
 Two-step: **generate** a workout plan from the user's constraints, then
 **start** it as a live session if they want to do it right now.
 
-Base URL: `SETRAI_URL` from `~/.config/setrai-omarchy/config`, default
-`http://localhost:3000`.
+Connection: read `baseUrl` and `apiKey` from
+`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
+Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
+them; the address defaults to `http://localhost:3000`. Send
+`Authorization: Bearer <apiKey>` on every request.
 
 ## Step 1 — Generate
 
-`POST $SETRAI_URL/api/quick-workout` with a body describing constraints. The
+`POST <baseUrl>/api/quick-workout` with a body describing constraints. The
 server validates and fills in reasonable defaults; pass through whatever the
 user said. Common fields:
 
@@ -40,7 +43,7 @@ Start it now?
 
 ## Step 2 — Start (only on confirm)
 
-`POST $SETRAI_URL/api/quick-workout/start` with the same `workout` object the
+`POST <baseUrl>/api/quick-workout/start` with the same `workout` object the
 previous call returned. Response: `201 { session: { id, ... } }`.
 
 Then surface the live-session URL (`/sessions/<id>`) and offer to open the

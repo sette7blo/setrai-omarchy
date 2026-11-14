@@ -7,25 +7,44 @@ description: Pull the user's Setrai training statistics overview — recent volu
 
 Fetch and present Setrai's overview dashboard as plain text.
 
-Endpoint: `GET $SETRAI_URL/api/statistics`
-Config: `SETRAI_URL` from `~/.config/setrai-omarchy/config`, default `http://localhost:3000`.
+Endpoint: `GET <baseUrl>/api/statistics`
+Connection: read `baseUrl` and `apiKey` from
+`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
+Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
+them; the address defaults to `http://localhost:3000`. Send
+`Authorization: Bearer <apiKey>` on every request.
 
 ## Response shape
 
 ```json
 {
   "statistics": {
-    "volume": { ... weekly/monthly series ... },
-    "records": [ ... 1RM, volume PRs ... ],
-    "streak": { ... training streak info ... },
-    "bodyWeight": { ... trend ... }
+    "trainingFrequency": { "totalSessions": 84, "thisWeek": 2 },
+    "totalVolume": 512340,
+    "weeklyVolume": [ { "weekStart": "2026-11-09", "volume": 15200 } ],
+    "volumeByExercise": [ ... ],
+    "volumeByMuscle": [ ... ],
+    "personalRecords": [
+      { "exerciseName": "Bench press", "recordWeight": 100, "recordReps": 5,
+        "estimated1RM": 116.7, "achievedAt": "...", "improvement": 2.5 }
+    ],
+    "trainingStreak": {
+      "currentStreakDays": 2, "longestStreakDays": 5,
+      "currentStreakWeeks": 6, "longestStreakWeeks": 11
+    },
+    "bodyWeight": [ { "date": "2026-11-10", "weightKg": 72.1 } ],
+    "bodyWeightChangeKg": -1.4
   }
 }
 ```
 
-The exact fields are stable across releases; read whatever the response
-contains and render the subset the user asked for. Do not assume fields beyond
-`volume`, `records`, `streak`, `bodyWeight` without checking.
+- Volumes are in kg (weight x reps over completed sets).
+- `weeklyVolume` is oldest first, keyed by the Monday (UTC) of each week.
+  Weeks without training are left out, so a missing week means 0.
+- `bodyWeight` is oldest first. `bodyWeightChangeKg` is latest minus first
+  entry, or `null` when there are no entries.
+
+Report the server's figures as they are; don't recompute them.
 
 ## When to invoke
 
@@ -44,10 +63,10 @@ Volume (last 4 weeks)
   w-3   12.4t
   w-2   14.1t
   w-1   13.8t
-  w-0   15.2t   ↑
+  w-0   15.2t
 
-Streak: 6 weeks (last: 2026-11-08)
-Latest body weight: 72.1 kg (−0.4 from 4w ago)
+Streak: 6 weeks
+Body weight: 72.1 kg (-1.4 kg total)
 Recent PRs:
   Bench press    100 kg × 5
   Front squat    85 kg × 3

@@ -7,8 +7,12 @@ description: Log a body-weight measurement in Setrai for a specific date (defaul
 
 Use this when the user wants to **record a body-weight measurement**.
 
-Endpoint: `POST $SETRAI_URL/api/body-weight`
-Config: `SETRAI_URL` from `~/.config/setrai-omarchy/config`, default `http://localhost:3000`.
+Endpoint: `POST <baseUrl>/api/body-weight`
+Connection: read `baseUrl` and `apiKey` from
+`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
+Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
+them; the address defaults to `http://localhost:3000`. Send
+`Authorization: Bearer <apiKey>` on every request.
 
 ## Request shape
 
