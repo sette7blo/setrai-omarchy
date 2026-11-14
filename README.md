@@ -80,7 +80,10 @@ From top to bottom:
   and a trend line over the full history. Type today's weight in the field
   and press Enter to log it (`POST /api/body-weight`); logging again the same
   day replaces the entry. Escape clears the field.
-- **Open Setrai**, or **Resume workout** when a session is open.
+- **Start workout** asks which saved program in the Omarchy menu, starts the
+  session and opens it in its own window. While a session is open the button
+  is **Resume workout** instead, and nothing new is started.
+- **Open Setrai**.
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
 `GET /api/statistics` and `GET /api/profile` every 30 seconds by default (configurable), and when
@@ -94,6 +97,7 @@ A `Fitness` submenu:
 | Entry | Action |
 |---|---|
 | Open Setrai | `setrai open` |
+| Start workout | `setrai start` |
 | Quick workout | `setrai quick` |
 | Log body weight | `setrai body` |
 | Show stats | `setrai stats` |
@@ -101,7 +105,9 @@ A `Fitness` submenu:
 ## CLI
 
 ```sh
-setrai open              # open the PWA
+setrai open              # open Setrai in its own window
+setrai start             # pick a saved program and start it
+setrai start 12          # start program 12 without asking
 setrai open /statistics  # open a specific page
 setrai quick             # generate + start a quick workout
 setrai body 72.4         # log today's weight in your profile's unit (asks if omitted)
