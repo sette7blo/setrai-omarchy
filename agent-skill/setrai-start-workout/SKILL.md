@@ -31,8 +31,15 @@ them; the address defaults to `http://localhost:3000`. Send
    `POST <baseUrl>/api/sessions` with body `{ "programId": <id> }`
    Server response: `201 { session: { id, programName, plannedExercises, ... } }`.
 3. **Confirm to the user**: name of the program, number of planned exercises,
-   and the resume URL (`/sessions/<id>`). Offer to open the browser via
-   `setrai open /sessions/<id>`.
+   and the resume URL (`/sessions/<id>`). Offer to open it via
+   `setrai open /sessions/<id>`, which opens Setrai in its own window.
+
+Before step 2, check `GET <baseUrl>/api/sessions` for a session whose
+`finishedAt` is `null`. Setrai does not stop a second session from starting,
+so if one is open, tell the user and offer to resume it instead.
+
+Shortcut: once the user has confirmed a program, `setrai start <id>` does the
+open-session check, starts the session and opens the window in one step.
 
 ## Error handling
 
