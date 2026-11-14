@@ -16,19 +16,39 @@ them; the address defaults to `http://localhost:3000`. Send
 
 ## Step 1 — Generate
 
-`POST <baseUrl>/api/quick-workout` with a body describing constraints. The
-server validates and fills in reasonable defaults; pass through whatever the
-user said. Common fields:
+`POST <baseUrl>/api/quick-workout` with a JSON body describing constraints.
+Every field is optional; `{}` is valid.
 
 ```json
 {
-  "durationMin": 30,
-  "focus": "push" | "pull" | "legs" | "upper" | "full",
-  "equipment": ["barbell", "dumbbell", "bodyweight"]
+  "durationMinutes": 30,
+  "goal": "hypertrophy",
+  "targetMuscles": ["chest", "triceps"],
+  "equipment": ["barbell", "bench", "dumbbells"]
 }
 ```
 
-Response: `200 { workout: { name, exercises: [...] } }`.
+- `durationMinutes`: integer from 15 to 90. Defaults to 30. The plan has one
+  exercise per 9 minutes.
+- `goal`: `strength`, `hypertrophy`, `general-fitness` or `endurance`. Defaults
+  to the training goal in the user's profile. It sets the sets, reps and rest.
+- `targetMuscles`: array of `chest`, `back`, `shoulders`, `biceps`, `triceps`,
+  `core`, `quadriceps`, `hamstrings`, `glutes`, `calves`. Leave it out to let
+  the server pick the most recovered muscles.
+- `equipment`: array of `bodyweight`, `barbell`, `dumbbells`, `kettlebell`,
+  `bench`, `cable-machine`, `machine`, `pull-up-bar`, `steel-mace`. Defaults to
+  the equipment in the user's profile; only send it when the user names what
+  they have today.
+
+The server ignores fields it does not know, so a misspelled name silently
+gives a default workout. Map what the user says onto these fields: "push" is
+`["chest", "shoulders", "triceps"]`, "pull" is `["back", "biceps"]`, "legs" is
+`["quadriceps", "hamstrings", "glutes", "calves"]`.
+
+Response: `200 { workout: { name, durationMinutes, estimatedDurationMinutes,
+goal, targetMuscles, exercises: [{ exerciseName, muscleGroup, sets, reps,
+restSec, ... }] } }`. Check that `durationMinutes`, `goal` and `targetMuscles`
+in the response match what you sent.
 
 Present the generated plan to the user **before** starting it:
 
@@ -43,8 +63,8 @@ Start it now?
 
 ## Step 2 — Start (only on confirm)
 
-`POST <baseUrl>/api/quick-workout/start` with the same `workout` object the
-previous call returned. Response: `201 { session: { id, ... } }`.
+`POST <baseUrl>/api/quick-workout/start` with `{ "workout": <the workout
+object from step 1> }`. Response: `201 { workout, program, session: { id, ... } }`.
 
 Then surface the live-session URL (`/sessions/<id>`) and offer to open the
 browser via `setrai open /sessions/<id>`.
@@ -56,6 +76,6 @@ Starting a session mutates state. Never POST to `/start` without an explicit
 
 ## Error handling
 
-- Generator rejects constraints as unsatisfiable → relay the error and let the
-  user relax a constraint (e.g. longer duration, broader focus).
+- `400` with a message such as `Duration must be between 15 and 90 minutes` or
+  `Invalid quick-workout goal` → relay it and let the user adjust.
 - Connection refused → Setrai is not running; stop.
