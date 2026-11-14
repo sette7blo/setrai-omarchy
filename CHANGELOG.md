@@ -6,6 +6,15 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Log today's body weight from the popover: type it in the body-weight section and press
+  Enter. Logging again the same day replaces the entry.
+
+### Changed
+- Weights follow the unit set in your Setrai profile. With `lb`, the popover shows body
+  weight, its change and weekly volume in pounds, and `setrai body` takes pounds. Setrai
+  still stores kilograms.
+
 ### Fixed
 - "Log body weight" in the Fitness menu did nothing. It now asks for the weight in an
   Omarchy menu prompt and confirms with a notification.
