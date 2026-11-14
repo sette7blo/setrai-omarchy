@@ -26,7 +26,8 @@ them; the address defaults to `http://localhost:3000`. Send
 
 ## Response
 
-`201 { entry: { id, date, weightKg } }`.
+`201 { entry: { id, date, weightKg } }`. An entry that already exists for that
+date is replaced.
 
 ## When to invoke
 
@@ -58,5 +59,7 @@ conversion mistakes before they're written.
 
 ## Error handling
 
-- `400 Invalid body-weight date` → date was not `YYYY-MM-DD` or in the future.
-- `400 Invalid body-weight` → weight was zero/negative/non-numeric.
+- `400 Invalid body-weight date` → date was not a real `YYYY-MM-DD` date. The
+  server accepts future dates, so check the date yourself before sending.
+- `400 Weight must be numeric` / `Weight must be greater than zero` → fix the
+  value and ask again.
