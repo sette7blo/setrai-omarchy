@@ -138,7 +138,7 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 
 ### Coach
 
-"Ask coach" in the Fitness menu, or `setrai coach`, opens your default Omarchy
+"Ask coach" in the popover or the Fitness menu, or `setrai coach`, opens your default Omarchy
 agent (`omarchy default agent <name>`) in a terminal with a prompt that points
 it at these skills and starts with a weekly review. `setrai coach "<question>"`
 starts from your question instead. The entry is hidden until a default agent is

@@ -14,6 +14,7 @@ project uses [Semantic Versioning](https://semver.org/).
   is already in progress it is opened instead of starting a second one.
 - "Ask coach" in the Fitness menu (`setrai coach`) opens your default Omarchy agent with your
   Setrai data and skills at hand. It is hidden until a default agent is set.
+- An "Ask coach" button in the popover does the same.
 - Two agent skills: `setrai-create-program` designs a program with you and saves it, and
   `setrai-weekly-review` reads the week's sessions and suggests what to adjust. Run
   `install.sh` again to link them.
