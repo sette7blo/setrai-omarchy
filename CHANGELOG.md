@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-11-15
+
 ### Added
 - Log today's body weight from the popover: type it in the body-weight section and press
   Enter. Logging again the same day replaces the entry.
@@ -23,7 +25,6 @@ project uses [Semantic Versioning](https://semver.org/).
 - Weights follow the unit set in your Setrai profile. With `lb`, the popover shows body
   weight, its change and weekly volume in pounds, and `setrai body` takes pounds. Setrai
   still stores kilograms.
-
 - Setrai opens in its own window (`omarchy-launch-webapp`) instead of a browser tab.
 - `setrai quick` opens the session it started instead of the home page.
 
@@ -64,5 +65,6 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/sette7blo/setrai-omarchy/releases/tag/v0.2.0
