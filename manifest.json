@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.sette7blo.setrai",
   "name": "Setrai",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "sette7blo",
   "license": "MIT",
   "description": "Glanceable Setrai training state in the Omarchy bar: readiness, this week's sessions and volume, body weight, and a one-tap resume for an open workout.",

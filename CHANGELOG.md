@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.0] - 2026-11-15
+
 ### Removed
 - The Fitness section in the Omarchy menu. The popover already covers opening Setrai, starting
   a workout, logging body weight and asking the coach, and the plugin no longer edits
@@ -72,6 +74,7 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/sette7blo/setrai-omarchy/releases/tag/v0.2.0
