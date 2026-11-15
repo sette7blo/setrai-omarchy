@@ -208,8 +208,16 @@ cmd_coach() {
     report "The coach needs Omarchy's agent launcher (omarchy agent)."
     return 1
   fi
-  if [[ -z "$(omarchy-default-agent 2>/dev/null || true)" ]]; then
+  local agent
+  agent="$(omarchy-default-agent 2>/dev/null || true)"
+  if [[ -z "$agent" ]]; then
     report "Choose a default agent first: omarchy default agent <name>"
+    return 1
+  fi
+  # The launcher's own errors go to a terminal that never opens, so say it
+  # here. OpenClaw is started through its own launcher, not a command.
+  if [[ "$agent" != "openclaw" ]] && ! command -v -- "$agent" >/dev/null 2>&1; then
+    report "$agent is not installed. Choose an installed agent: omarchy default agent <name>"
     return 1
   fi
   local skills question="$*"

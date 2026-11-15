@@ -11,7 +11,10 @@ CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 PLUGIN_LINK="$CONFIG_HOME/omarchy/plugins/$PLUGIN_ID"
 CLI_LINK="$HOME/.local/bin/setrai"
 DESKTOP_LINK="$HOME/.local/share/applications/setrai.desktop"
-MENU_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
+MENU_FILE="$CONFIG_HOME/omarchy/extensions/omarchy-menu.jsonc"
+MENU_OLD_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
+MENU_BEGIN="// >>> setrai"
+MENU_END="// <<< setrai"
 HOOK_LINK="$CONFIG_HOME/omarchy/hooks/post-boot.d/50-setrai.sh"
 CONFIG_DIR="$CONFIG_HOME/setrai-omarchy"
 STATE_DIR="$STATE_HOME/omarchy/setrai"
@@ -35,8 +38,20 @@ fi
 remove_link "$PLUGIN_LINK"
 remove_link "$CLI_LINK"
 remove_link "$DESKTOP_LINK"
-remove_link "$MENU_LINK"
+remove_link "$MENU_OLD_LINK"
 remove_link "$HOOK_LINK"
+
+# The Fitness entries install.sh merged into the user's menu file.
+if [[ -f "$MENU_FILE" ]] && grep -qF -- "$MENU_BEGIN" "$MENU_FILE"; then
+  tmp="$(mktemp -p "$(dirname "$MENU_FILE")" .omarchy-menu.XXXXXX)"
+  awk -v begin="$MENU_BEGIN" -v end="$MENU_END" '
+    index($0, begin) { skipping = 1; next }
+    skipping { if (index($0, end)) skipping = 0; next }
+    { print }
+  ' "$MENU_FILE" > "$tmp"
+  mv -f "$tmp" "$MENU_FILE"
+  log "removed Fitness entries from $MENU_FILE"
+fi
 
 # Agent skill symlinks.
 for agent_home in "$HOME/.claude" "$HOME/.codex" "$HOME/.agents" "$HOME/.copilot"; do

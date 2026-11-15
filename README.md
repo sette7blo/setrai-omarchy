@@ -53,7 +53,7 @@ read them from. `--setrai-url` only pre-fills the address there.
 | `~/.config/omarchy/plugins/io.github.sette7blo.setrai` | Plugin dir (symlink to this repo) |
 | `~/.local/bin/setrai` | CLI wrapper (symlink) |
 | `~/.local/share/applications/setrai.desktop` | Launcher entry |
-| `~/.config/omarchy/extensions/omarchy-menu-setrai.jsonc` | Menu extension |
+| `~/.config/omarchy/extensions/omarchy-menu.jsonc` | Fitness menu entries, merged in as a marked block (the rest of the file is left alone) |
 | `~/.config/omarchy/hooks/post-boot.d/50-setrai.sh` | Autostart (optional, with `--autostart`) |
 | `~/.config/setrai-omarchy/config` | Compose path for the optional autostart hook |
 | `~/.local/state/omarchy/setrai/credentials.json` | Server address and API key (mode 600, written by the Settings view) |

@@ -27,6 +27,10 @@ project uses [Semantic Versioning](https://semver.org/).
 - `setrai quick` opens the session it started instead of the home page.
 
 ### Fixed
+- The Fitness menu never appeared: Omarchy reads one menu file, and the entries were linked
+  beside it. `install.sh` now merges them into `~/.config/omarchy/extensions/omarchy-menu.jsonc`
+  as a marked block, and `uninstall.sh` removes the block. Run `install.sh` again.
+- `setrai coach` says so when the default agent is not installed instead of doing nothing.
 - "Log body weight" in the Fitness menu did nothing. It now asks for the weight in an
   Omarchy menu prompt and confirms with a notification.
 - `setrai body` rejects values that are not a positive number instead of sending them.
