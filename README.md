@@ -101,7 +101,7 @@ A `Fitness` submenu:
 setrai open              # open the PWA
 setrai open /statistics  # open a specific page
 setrai quick             # generate + start a quick workout
-setrai body 72.4         # log 72.4 kg for today's local date (prompts if omitted)
+setrai body 72.4         # log 72.4 kg for today's local date (asks if omitted)
 setrai stats             # open statistics
 setrai recovery          # open recovery
 ```

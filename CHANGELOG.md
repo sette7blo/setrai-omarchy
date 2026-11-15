@@ -6,6 +6,14 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- "Log body weight" in the Fitness menu did nothing. It now asks for the weight in an
+  Omarchy menu prompt and confirms with a notification.
+- `setrai body` rejects values that are not a positive number instead of sending them.
+- The quick-workout skill documented request fields the server ignores, so requests such as
+  "30 minutes, push" returned a default workout. It now documents `durationMinutes`, `goal`,
+  `targetMuscles` and `equipment`.
+
 ## [v0.2.0] - 2026-11-14
 
 First tagged release. Requires Setrai v0.8.0 or newer.
