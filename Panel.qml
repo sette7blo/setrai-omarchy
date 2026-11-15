@@ -31,8 +31,10 @@ Panel {
   readonly property var openWorkout: service ? service.openWorkout : null
   readonly property bool hasResume: !!openWorkout
   readonly property bool hasReadiness: configured && !!service && service.readiness !== null
-  readonly property bool hasBody: configured && !!service && !!service.bodyEntries && service.bodyEntries.length > 0
-  readonly property bool settingsBlocked: settingsLoader.item ? settingsLoader.item.editorOpen === true : false
+  readonly property string weightUnit: service ? service.weightUnit : "kg"
+  // True while a text field has focus, so the panel leaves the keys to it.
+  readonly property bool settingsBlocked: (settingsLoader.item ? settingsLoader.item.editorOpen === true : false)
+    || bodyChart.editorOpen
 
   readonly property string notice: {
     if (!service) return ""
@@ -190,7 +192,7 @@ Panel {
             var svc = root.service
             var rows = [
               { label: "This week", value: Model.formatSessions(svc ? svc.sessionsThisWeek : 0) },
-              { label: "Volume", value: Model.formatVolume(svc ? svc.weekVolumeKg : 0) }
+              { label: "Volume", value: Model.formatVolume(svc ? svc.weekVolumeKg : 0, root.weightUnit) }
             ]
             if (!root.hasReadiness && root.lastWorkoutText !== "")
               rows.push({ label: "Last", value: root.lastWorkoutText })
@@ -224,14 +226,18 @@ Panel {
 
       PanelSeparator {
         foreground: root.foreground
-        visible: !root.showSettings && root.hasBody
+        visible: bodyChart.visible
       }
 
       // ---- Body weight ----
+      // Shown without any entries too, so the first one can be logged here.
       BodyChart {
-        visible: !root.showSettings && root.hasBody
+        id: bodyChart
+        visible: !root.showSettings && root.configured
         entries: root.service ? root.service.bodyEntries : []
         changeKg: root.service ? root.service.bodyChangeKg : null
+        unit: root.weightUnit
+        service: root.service
         foreground: root.foreground
         dim: root.dim
         accent: root.accent

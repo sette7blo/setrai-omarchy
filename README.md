@@ -8,8 +8,9 @@ workouts and log body weight from natural language.
 
 Setrai runs on its own (PWA on iOS, Docker on a server). The plugin talks to
 its regular REST API with a Setrai API key you paste into the plugin's
-Settings view. It only fetches and displays: every figure comes from the
-server as-is.
+Settings view. It does not calculate anything: every figure comes from the
+Setrai API as the server returns it. The one thing it writes is today's body
+weight, which you can log from the popover.
 
 ## Requirements
 
@@ -76,11 +77,13 @@ From top to bottom:
 - **This week**: sessions (`trainingFrequency.thisWeek`) and volume
   (`weeklyVolume`) from `GET /api/statistics`.
 - **Body weight**: latest entry, the total change (`bodyWeightChangeKg`)
-  and a trend line over the full history.
+  and a trend line over the full history. Type today's weight in the field
+  and press Enter to log it (`POST /api/body-weight`); logging again the same
+  day replaces the entry. Escape clears the field.
 - **Open Setrai**, or **Resume workout** when a session is open.
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
-`GET /api/statistics` every 30 seconds by default (configurable), and when
+`GET /api/statistics` and `GET /api/profile` every 30 seconds by default (configurable), and when
 the popover opens. If the server is unreachable or the key is rejected, the
 popover says so and offers a button to open settings.
 
@@ -101,7 +104,8 @@ A `Fitness` submenu:
 setrai open              # open the PWA
 setrai open /statistics  # open a specific page
 setrai quick             # generate + start a quick workout
-setrai body 72.4         # log 72.4 kg for today's local date (asks if omitted)
+setrai body 72.4         # log today's weight in your profile's unit (asks if omitted)
+setrai body 160lb        # a trailing kg or lb overrides the unit
 setrai stats             # open statistics
 setrai recovery          # open recovery
 ```
@@ -151,7 +155,7 @@ Service.qml                Background poller + connection store
 BarWidget.qml              The bar icon
 Panel.qml                  The click-to-open popover
 ReadinessView.qml          Overall readiness figure
-BodyChart.qml              Latest body weight, total change, trend line
+BodyChart.qml              Latest body weight, total change, trend line, entry field
 SettingsView.qml           Server address, API key and refresh form
 Model.js                   Pure-JS helpers (parsing and formatting only)
 bin/setrai                 CLI wrapper used by the menu + desktop entry

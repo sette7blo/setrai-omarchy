@@ -255,6 +255,12 @@ function parseStatistics(text) {
   }
 }
 
+function parseProfile(text) {
+  var data = parseJsonSafe(text, {})
+  var profile = data && data.profile ? data.profile : {}
+  return { weightUnit: profile.weightUnit === "lb" ? "lb" : "kg" }
+}
+
 function parseApiKeyProbe(text) {
   var data = parseJsonSafe(text, null)
   if (!data || !data.apiKey) return null
@@ -328,25 +334,66 @@ function latestBodyEntry(entries) {
 
 // ----- Formatting --------------------------------------------------------
 
-function formatVolume(kg) {
-  var n = Number(kg)
-  if (!(n > 0)) return "0 kg"
-  if (n >= 1000) return (n / 1000).toFixed(1) + " t"
-  return Math.round(n) + " kg"
+// Setrai stores every weight in kg. The profile's weightUnit only changes how
+// a value is written out and typed in; the factor is the web app's.
+var LB_PER_KG = 2.2046226218
+
+function weightUnit(unit) {
+  return unit === "lb" ? "lb" : "kg"
 }
 
-function formatKg(value) {
-  if (value === null || value === undefined) return "-"
-  var n = Number(value)
-  if (!isFinite(n)) return "-"
-  return n.toFixed(1) + " kg"
+function inUnit(kg, unit) {
+  return weightUnit(unit) === "lb" ? Number(kg) * LB_PER_KG : Number(kg)
 }
 
-function formatChangeKg(value) {
-  if (value === null || value === undefined || !isFinite(Number(value))) return ""
-  var n = Number(value)
+function formatVolume(kg, unit) {
+  var u = weightUnit(unit)
+  var n = inUnit(kg, u)
+  if (!(n > 0)) return "0 " + u
+  if (u === "kg" && n >= 1000) return (n / 1000).toFixed(1) + " t"
+  // Grouped by hand: QML's Number.toLocaleString does not take a locale name.
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+$)/g, ",") + " " + u
+}
+
+function formatWeight(kg, unit) {
+  if (kg === null || kg === undefined || !isFinite(Number(kg))) return "-"
+  return inUnit(kg, unit).toFixed(1) + " " + weightUnit(unit)
+}
+
+function formatChange(kg, unit) {
+  if (kg === null || kg === undefined || !isFinite(Number(kg))) return ""
+  var n = inUnit(kg, unit)
   if (Math.abs(n) < 0.05) return "No change"
-  return (n > 0 ? "+" : "−") + Math.abs(n).toFixed(1) + " kg"
+  return (n > 0 ? "+" : "\u2212") + Math.abs(n).toFixed(1) + " " + weightUnit(unit)
+}
+
+// ----- Body-weight entry -------------------------------------------------
+
+// Reads what the user typed in their own unit. Returns the kg value the API
+// takes, or a message saying why nothing can be sent.
+function parseWeightInput(text, unit) {
+  var raw = String(text === null || text === undefined ? "" : text).trim().replace(",", ".")
+  if (!raw) return { weightKg: null, error: "Enter your weight" }
+  if (!/^\d+(\.\d+)?$/.test(raw)) return { weightKg: null, error: "Enter a number, such as 72.4" }
+  var n = Number(raw)
+  if (!(n > 0)) return { weightKg: null, error: "Weight must be greater than zero" }
+  var kg = weightUnit(unit) === "lb" ? n / LB_PER_KG : n
+  return { weightKg: Math.round(kg * 100) / 100, error: "" }
+}
+
+function localDateKey(date) {
+  var d = date || new Date()
+  function pad(v) { return (v < 10 ? "0" : "") + v }
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+}
+
+function bodyWeightBody(weightKg, date) {
+  return JSON.stringify({ date: localDateKey(date), weightKg: Number(weightKg) })
+}
+
+function parseErrorMessage(text) {
+  var data = parseJsonSafe(text, {})
+  return data && typeof data.error === "string" ? data.error : ""
 }
 
 function formatReadinessPct(value) {
@@ -410,9 +457,15 @@ if (typeof module !== "undefined" && module.exports) {
     openWorkout: openWorkout,
     lastFinishedAt: lastFinishedAt,
     latestBodyEntry: latestBodyEntry,
+    LB_PER_KG: LB_PER_KG,
+    parseProfile: parseProfile,
     formatVolume: formatVolume,
-    formatKg: formatKg,
-    formatChangeKg: formatChangeKg,
+    formatWeight: formatWeight,
+    formatChange: formatChange,
+    parseWeightInput: parseWeightInput,
+    localDateKey: localDateKey,
+    bodyWeightBody: bodyWeightBody,
+    parseErrorMessage: parseErrorMessage,
     formatReadinessPct: formatReadinessPct,
     formatSessions: formatSessions,
     relativeDay: relativeDay

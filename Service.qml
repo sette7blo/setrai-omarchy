@@ -5,7 +5,8 @@ import "Model.js" as Model
 
 // Background service: polls Setrai's REST API with an API key and exposes
 // the values it returns (readiness, this week's sessions and volume, body
-// weight, an open workout) to the bar widget and the panel. Nothing here
+// weight, an open workout) to the bar widget and the panel. It also sends
+// the one thing the panel can enter, today's body weight. Nothing here
 // computes a figure the server does not already provide.
 Item {
   id: root
@@ -36,6 +37,7 @@ Item {
   property var sessions: []
   property var readiness: null              // whole %, from /api/recovery
   property var statistics: Model.parseStatistics("")
+  property string weightUnit: "kg"          // "kg" | "lb", from /api/profile
   property string lastUpdatedAt: ""
   property string status: "idle"
   // "idle" | "polling" | "ok" | "unauthorized" | "unreachable" | "unconfigured" | "error"
@@ -50,6 +52,10 @@ Item {
 
   // --- Settings test-connection result (SettingsView listens) --------------
   signal connectionProbed(bool ok, string message, var info)
+
+  // --- Body-weight entry result (BodyChart listens) -------------------------
+  property bool savingBodyWeight: false
+  signal bodyWeightSaved(bool ok, string message)
 
   // --- Internal state ------------------------------------------------------
   property bool dirsReady: false
@@ -129,7 +135,8 @@ Item {
     var pathForKind = {
       "sessions": "/api/sessions",
       "recovery": "/api/recovery",
-      "statistics": "/api/statistics"
+      "statistics": "/api/statistics",
+      "profile": "/api/profile"
     }
     var path = pathForKind[kind] || ""
     if (!path) return
@@ -145,6 +152,7 @@ Item {
     enqueueRequest("sessions")
     enqueueRequest("recovery")
     enqueueRequest("statistics")
+    enqueueRequest("profile")
   }
 
   function pump() {
@@ -177,11 +185,40 @@ Item {
     if (kind === "sessions") root.sessions = Model.parseSessions(body)
     else if (kind === "recovery") root.readiness = Model.parseRecovery(body).readiness
     else if (kind === "statistics") root.statistics = Model.parseStatistics(body)
+    else if (kind === "profile") root.weightUnit = Model.parseProfile(body).weightUnit
     root.lastUpdatedAt = new Date().toISOString()
     if (!root.reqQueue.length) {
       root.status = "ok"
       root.statusDetail = ""
     }
+  }
+
+  // --- Body-weight entry ---------------------------------------------------
+  // `text` is what the user typed, in their own unit. The entry is saved for
+  // today's local date; Setrai replaces an entry that already exists for it.
+  function logBodyWeight(text) {
+    if (root.savingBodyWeight) return
+    var parsed = Model.parseWeightInput(text, root.weightUnit)
+    if (parsed.error) {
+      root.bodyWeightSaved(false, parsed.error)
+      return
+    }
+    if (!root.configured || !root.headerReady) {
+      root.bodyWeightSaved(false, "Connect your Setrai server first.")
+      return
+    }
+    root.savingBodyWeight = true
+    // The key stays in the private header file; the body holds no secret.
+    postProc.command = [
+      "curl", "-sS", "-m", "15", "-w", "\n%{http_code}",
+      "--proto", "=http,https",
+      "-H", "@" + root.headerPath,
+      "-H", "Content-Type: application/json",
+      "-X", "POST",
+      "--data-raw", Model.bodyWeightBody(parsed.weightKg, new Date()),
+      "--", Model.apiUrl(root.baseUrl, "/api/body-weight")
+    ]
+    postProc.running = true
   }
 
   // --- Test-connection one-shot (used by SettingsView) ---------------------
@@ -271,6 +308,31 @@ Item {
         }
       }
       Qt.callLater(root.pump)
+    }
+  }
+
+  Process {
+    id: postProc
+    running: false
+    stdout: StdioCollector { id: postOut; waitForEnd: true }
+    onExited: function(code) {
+      root.savingBodyWeight = false
+      var raw = String(postOut.text || "")
+      if (code !== 0) {
+        root.bodyWeightSaved(false, "Setrai is not responding. Nothing was saved.")
+        return
+      }
+      var lastNewline = raw.lastIndexOf("\n")
+      var statusCode = lastNewline >= 0 ? parseInt(raw.slice(lastNewline + 1), 10) : 0
+      var body = lastNewline >= 0 ? raw.slice(0, lastNewline) : raw
+      if (statusCode >= 200 && statusCode < 300) {
+        root.bodyWeightSaved(true, "")
+        root.enqueueRequest("statistics")
+      } else if (statusCode === 401 || statusCode === 403) {
+        root.bodyWeightSaved(false, "Setrai did not accept the API key.")
+      } else {
+        root.bodyWeightSaved(false, Model.parseErrorMessage(body) || "Setrai returned HTTP " + statusCode + ".")
+      }
     }
   }
 

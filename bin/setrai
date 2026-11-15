@@ -61,26 +61,47 @@ report() {
   fi
 }
 
+# The unit weights are typed and shown in: the profile's weightUnit.
+profile_unit() {
+  local profile
+  profile="$(api GET /api/profile 2>/dev/null || true)"
+  if [[ "$profile" =~ \"weightUnit\"[[:space:]]*:[[:space:]]*\"lb\" ]]; then
+    echo lb
+  else
+    echo kg
+  fi
+}
+
 cmd_body() {
-  local weight="${1:-}"
+  local weight="${1:-}" unit
+  unit="$(profile_unit)"
   if [[ -z "$weight" ]]; then
     if [[ -t 0 ]]; then
-      read -r -p "Body weight (kg): " weight || true
+      read -r -p "Body weight ($unit): " weight || true
     elif command -v omarchy-menu-input >/dev/null 2>&1; then
-      weight="$(omarchy-menu-input "Body weight (kg)" || true)"
+      weight="$(omarchy-menu-input "Body weight ($unit)" || true)"
     fi
   fi
   weight="${weight//[[:space:]]/}"
   weight="${weight/,/.}"
   [[ -n "$weight" ]] || return 0
+  # A trailing kg or lb overrides the profile's unit for this entry.
+  case "${weight,,}" in
+    *kg) unit=kg; weight="${weight%??}" ;;
+    *lb) unit=lb; weight="${weight%??}" ;;
+  esac
   if ! [[ "$weight" =~ ^[0-9]+(\.[0-9]+)?$ ]] || [[ "$weight" =~ ^0*(\.0*)?$ ]]; then
     report "Not a valid body weight: $weight"
     return 2
   fi
+  local kg="$weight"
+  if [[ "$unit" == lb ]]; then
+    kg="$(awk -v w="$weight" 'BEGIN { printf "%.2f", w / 2.2046226218 }')"
+  fi
   local today error
   today="$(date +%Y-%m-%d)"
-  if error="$(api POST /api/body-weight "{\"weightKg\":$weight,\"date\":\"$today\"}" 2>&1 >/dev/null)"; then
-    report "Logged $weight kg for $today"
+  if error="$(api POST /api/body-weight "{\"weightKg\":$kg,\"date\":\"$today\"}" 2>&1 >/dev/null)"; then
+    report "Logged $weight $unit for $today"
   else
     report "Could not log body weight. ${error:-Is Setrai running?}"
     return 1
@@ -97,7 +118,7 @@ Usage: setrai <command> [args]
 Commands:
   open [path]        Open Setrai PWA in default browser (optional path, e.g. /statistics)
   quick [json]       Generate + start a quick workout, then open it
-  body [weightKg]    Log body weight for today (asks if omitted)
+  body [weight]      Log body weight for today in your profile's unit (asks if omitted)
   stats              Open the Statistics page
   recovery           Open the Recovery page
 

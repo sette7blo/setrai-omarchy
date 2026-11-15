@@ -5,13 +5,16 @@ import qs.Ui
 import "Model.js" as Model
 
 // Body-weight block: section label, the latest weight with Setrai's total
-// change (bodyWeightChangeKg), and a hairline trend over the full history.
+// change (bodyWeightChangeKg), a hairline trend over the full history, and a
+// field to log today's weight. Values are written in the profile's unit.
 // Weight direction is not good or bad on its own, so the change stays neutral.
 Column {
   id: root
 
   property var entries: []                      // oldest -> newest, [{date, weightKg}]
   property var changeKg: null                   // latest minus first, from the server
+  property string unit: "kg"                    // profile weightUnit: "kg" | "lb"
+  property var service: null
   property color foreground: Color.foreground
   property color dim: Qt.darker(foreground, 1.55)
   property color accent: Color.accent
@@ -19,9 +22,31 @@ Column {
 
   readonly property var _latest: Model.latestBodyEntry(entries)
   readonly property string deltaText: {
-    var t = Model.formatChangeKg(changeKg)
+    var t = Model.formatChange(changeKg, unit)
     if (!t || entries.length < 2) return ""
     return t === "No change" ? "No change in total" : t + " total"
+  }
+
+  readonly property bool editorOpen: weightField.activeFocus
+  readonly property bool saving: service ? service.savingBodyWeight === true : false
+  property string entryMessage: ""
+  property bool entryFailed: false
+
+  function submit() {
+    if (!service || saving) return
+    entryMessage = ""
+    service.logBodyWeight(weightField.text)
+  }
+
+  Connections {
+    target: root.service
+    ignoreUnknownSignals: true
+    function onBodyWeightSaved(ok, message) {
+      root.entryFailed = !ok
+      root.entryMessage = ok ? "Saved for today" : String(message || "Could not save.")
+      // A failed entry keeps what was typed so it can be corrected.
+      if (ok) weightField.text = ""
+    }
   }
 
   spacing: Style.spacing.lg
@@ -42,7 +67,7 @@ Column {
     Text {
       id: weightText
       textFormat: Text.PlainText
-      text: root._latest ? root._latest.weightKg.toFixed(1) + " kg" : ""
+      text: root._latest ? Model.formatWeight(root._latest.weightKg, root.unit) : ""
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.heading
@@ -142,11 +167,57 @@ Column {
       anchors.verticalCenter: parent.verticalCenter
       visible: !chart.visible
       text: root.entries.length === 0
-        ? "Log your weight in Setrai to see a trend here."
+        ? "Log your weight to see a trend here."
         : "Log one more entry to see a trend."
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
     }
+  }
+
+  // ---- Log today's weight ----
+  RowLayout {
+    width: parent.width
+    spacing: Style.spacing.lg
+
+    TextField {
+      id: weightField
+      Layout.fillWidth: true
+      placeholderText: "Today's weight in " + root.unit
+      inputMethodHints: Qt.ImhFormattedNumbersOnly
+      enabled: !root.saving
+      foreground: root.foreground
+      accent: root.accent
+      font.family: root.fontFamily
+      onTextEdited: root.entryMessage = ""
+      onAccepted: root.submit()
+      Keys.onEscapePressed: function(event) {
+        if (weightField.text !== "") weightField.text = ""
+        else weightField.focus = false
+        root.entryMessage = ""
+        event.accepted = true
+      }
+    }
+    Button {
+      text: root.saving ? "Saving" : "Log"
+      bordered: true
+      enabled: !root.saving && weightField.text.trim() !== ""
+      opacity: enabled ? 1 : 0.45
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: root.submit()
+    }
+  }
+
+  Text {
+    textFormat: Text.PlainText
+    width: parent.width
+    visible: root.entryMessage !== ""
+    text: root.entryMessage
+    color: root.entryFailed ? Color.urgent : root.dim
+    wrapMode: Text.WordWrap
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
   }
 }
