@@ -73,6 +73,13 @@ Panel {
     close()
   }
 
+  // Hands over to the CLI, which asks which program in the Omarchy menu.
+  function startWorkout() {
+    if (!bar || !root.hostWidget) return
+    bar.run(root.hostWidget.pluginDir + "/bin/setrai start")
+    close()
+  }
+
   Component {
     id: settingsComp
     SettingsView {
@@ -257,7 +264,7 @@ Panel {
 
         Button {
           Layout.fillWidth: true
-          text: root.hasResume ? "Resume workout" : "Open Setrai"
+          text: root.hasResume ? "Resume workout" : "Start workout"
           bordered: true
           selected: root.hasResume
           foreground: root.foreground
@@ -265,10 +272,10 @@ Panel {
           fontFamily: root.fontFamily
           onClicked: root.hasResume
             ? root.openSetrai(root.openWorkout.url)
-            : root.openSetrai("/")
+            : root.startWorkout()
         }
         Button {
-          visible: root.hasResume
+          Layout.fillWidth: !root.hasResume
           text: "Open Setrai"
           bordered: true
           foreground: root.foreground

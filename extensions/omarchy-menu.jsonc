@@ -4,6 +4,7 @@
 {
   "fitness": { "icon": "󰓅", "label": "Fitness" },
   "fitness.setrai": { "icon": "󰏌", "label": "Open Setrai", "action": "setrai open" },
+  "fitness.start": { "icon": "󰐊", "label": "Start workout", "action": "setrai start" },
   "fitness.quick": { "icon": "󰑮", "label": "Quick workout", "action": "setrai quick" },
   "fitness.body": { "icon": "󰑴", "label": "Log body weight", "action": "setrai body" },
   "fitness.stats": { "icon": "󰄪", "label": "Show stats", "action": "setrai stats" }

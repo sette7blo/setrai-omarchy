@@ -35,8 +35,14 @@ api() {
   curl "${args[@]}" "$SETRAI_URL$path"
 }
 
+# Opens Setrai in its own window where Omarchy can, otherwise in the browser.
 cmd_open() {
-  xdg-open "$SETRAI_URL${1:-/}" >/dev/null 2>&1 &
+  local url="$SETRAI_URL${1:-/}"
+  if command -v omarchy-launch-webapp >/dev/null 2>&1; then
+    omarchy-launch-webapp "$url" >/dev/null 2>&1 &
+  else
+    xdg-open "$url" >/dev/null 2>&1 &
+  fi
   disown
 }
 
@@ -47,7 +53,11 @@ cmd_quick() {
   # Server returns { workout: {...} }; pass back into /start to persist.
   local started
   started="$(api POST /api/quick-workout/start "$response")"
-  cmd_open "/"
+  local id=""
+  if command -v jq >/dev/null 2>&1; then
+    id="$(jq -r '.session.id // empty' <<<"$started" 2>/dev/null || true)"
+  fi
+  if [[ -n "$id" ]]; then cmd_open "/sessions/$id"; else cmd_open "/"; fi
   printf '%s\n' "$started"
 }
 
@@ -59,6 +69,89 @@ report() {
   elif command -v notify-send >/dev/null 2>&1; then
     notify-send -a Setrai "Setrai" "$1" || true
   fi
+}
+
+# Asks which of the given names to use: a numbered list in a terminal, the
+# Omarchy menu picker otherwise. Prints the chosen name, or nothing.
+pick() {
+  local prompt="$1"; shift
+  if [[ -t 0 && -t 1 ]]; then
+    local i=1 name answer
+    for name in "$@"; do printf '%2d) %s\n' "$i" "$name" >&2; i=$((i + 1)); done
+    read -r -p "$prompt (number): " answer || true
+    if [[ "$answer" =~ ^[0-9]+$ ]] && (( answer >= 1 && answer <= $# )); then
+      printf '%s\n' "${!answer}"
+    fi
+  elif command -v omarchy-menu-select >/dev/null 2>&1; then
+    omarchy-menu-select "$prompt" "$@" || true
+  fi
+}
+
+# Starts a session from a saved program and opens it. Setrai itself allows a
+# second open session, so an open one is resumed instead of starting another.
+cmd_start() {
+  if ! command -v jq >/dev/null 2>&1; then
+    report "setrai start needs jq."
+    return 1
+  fi
+  local sessions open
+  if ! sessions="$(api GET /api/sessions 2>/dev/null)"; then
+    report "Setrai is not responding. Check that the server is running."
+    return 1
+  fi
+  open="$(jq -r '[.sessions[] | select(.finishedAt == null)][0].id // empty' <<<"$sessions")"
+  if [[ -n "$open" ]]; then
+    report "A workout is already in progress. Opening it instead."
+    cmd_open "/sessions/$open"
+    return 0
+  fi
+
+  local id="${1:-}"
+  if [[ -z "$id" ]]; then
+    local programs
+    programs="$(api GET /api/programs)"
+    # One line per program: "<id><TAB><name>". A name used twice gets its id
+    # appended so the choice maps back to one program.
+    local -a ids=() names=()
+    local pid pname
+    while IFS=$'\t' read -r pid pname; do
+      [[ -n "$pid" ]] || continue
+      ids+=("$pid"); names+=("$pname")
+    done < <(jq -r '
+      .programs
+      | (map(.name) | group_by(.) | map(select(length > 1) | .[0])) as $dup
+      | .[]
+      | [(.id | tostring), (if (.name | IN($dup[])) then "\(.name) #\(.id)" else .name end)]
+      | @tsv' <<<"$programs")
+    if (( ${#ids[@]} == 0 )); then
+      report "No saved programs. Create one in Setrai first."
+      return 1
+    fi
+    local choice i
+    choice="$(pick "Start workout" "${names[@]}")"
+    [[ -n "$choice" ]] || return 0
+    for i in "${!names[@]}"; do
+      if [[ "${names[$i]}" == "$choice" ]]; then id="${ids[$i]}"; break; fi
+    done
+    [[ -n "$id" ]] || return 0
+  fi
+  if ! [[ "$id" =~ ^[0-9]+$ ]]; then
+    report "Not a program id: $id"
+    return 2
+  fi
+
+  local started session
+  if ! started="$(api POST /api/sessions "{\"programId\":$id}" 2>/dev/null)"; then
+    report "Could not start the workout. The program may no longer exist."
+    return 1
+  fi
+  session="$(jq -r '.session.id // empty' <<<"$started")"
+  if [[ -z "$session" ]]; then
+    report "Setrai did not return a session."
+    return 1
+  fi
+  report "Started $(jq -r '.session.programName // "workout"' <<<"$started")"
+  cmd_open "/sessions/$session"
 }
 
 # The unit weights are typed and shown in: the profile's weightUnit.
@@ -116,7 +209,8 @@ usage() {
 Usage: setrai <command> [args]
 
 Commands:
-  open [path]        Open Setrai PWA in default browser (optional path, e.g. /statistics)
+  open [path]        Open Setrai in its own window (optional path, e.g. /statistics)
+  start [programId]  Start a workout from a saved program (asks which if omitted)
   quick [json]       Generate + start a quick workout, then open it
   body [weight]      Log body weight for today in your profile's unit (asks if omitted)
   stats              Open the Statistics page
@@ -131,6 +225,7 @@ EOF
 
 case "${1:-}" in
   open)     shift; cmd_open "$@" ;;
+  start)    shift; cmd_start "$@" ;;
   quick)    shift; cmd_quick "$@" ;;
   body)     shift; cmd_body "$@" ;;
   stats)    cmd_stats ;;

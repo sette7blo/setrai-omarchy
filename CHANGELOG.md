@@ -9,11 +9,17 @@ project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - Log today's body weight from the popover: type it in the body-weight section and press
   Enter. Logging again the same day replaces the entry.
+- Start a workout from a saved program: `setrai start`, "Start workout" in the Fitness menu
+  and a button in the popover ask which program, start the session and open it. If a workout
+  is already in progress it is opened instead of starting a second one.
 
 ### Changed
 - Weights follow the unit set in your Setrai profile. With `lb`, the popover shows body
   weight, its change and weekly volume in pounds, and `setrai body` takes pounds. Setrai
   still stores kilograms.
+
+- Setrai opens in its own window (`omarchy-launch-webapp`) instead of a browser tab.
+- `setrai quick` opens the session it started instead of the home page.
 
 ### Fixed
 - "Log body weight" in the Fitness menu did nothing. It now asks for the weight in an
