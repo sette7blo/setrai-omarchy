@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.1] - 2026-11-15
+
 ### Changed
 - "Start workout" lists your saved programs inside the popover instead of opening the Omarchy
   menu as a picker. `setrai start` in a terminal still asks with a numbered list.
@@ -78,7 +80,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...HEAD
+[v0.4.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/sette7blo/setrai-omarchy/releases/tag/v0.2.0
