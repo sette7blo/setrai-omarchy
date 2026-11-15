@@ -6,6 +6,12 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.2] - 2026-11-15
+
+### Added
+- The manifest names a Monero address for tips (`"funding": { "monero": "..." }`), so
+  wallets and plugin managers that read it can offer a tip to the author.
+
 ## [v0.4.1] - 2026-11-15
 
 ### Changed
@@ -80,7 +86,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...HEAD
+[v0.4.2]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.2.0...v0.3.0
