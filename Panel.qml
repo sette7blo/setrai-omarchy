@@ -80,6 +80,13 @@ Panel {
     close()
   }
 
+  // Opens the default Omarchy agent in a terminal; the CLI reports if none is set.
+  function askCoach() {
+    if (!bar || !root.hostWidget) return
+    bar.run(root.hostWidget.pluginDir + "/bin/setrai coach")
+    close()
+  }
+
   Component {
     id: settingsComp
     SettingsView {
@@ -282,6 +289,14 @@ Panel {
           accent: root.accent
           fontFamily: root.fontFamily
           onClicked: root.openSetrai("/")
+        }
+        Button {
+          text: "Ask coach"
+          bordered: true
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onClicked: root.askCoach()
         }
       }
     }
