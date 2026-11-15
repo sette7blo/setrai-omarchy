@@ -6,6 +6,10 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- "Start workout" lists your saved programs inside the popover instead of opening the Omarchy
+  menu as a picker. `setrai start` in a terminal still asks with a numbered list.
+
 ## [v0.4.0] - 2026-11-15
 
 ### Removed

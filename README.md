@@ -79,8 +79,8 @@ From top to bottom:
   and a trend line over the full history. Type today's weight in the field
   and press Enter to log it (`POST /api/body-weight`); logging again the same
   day replaces the entry. Escape clears the field.
-- **Start workout** asks which saved program in an Omarchy picker, starts the
-  session and opens it in its own window. While a session is open the button
+- **Start workout** lists your saved programs in the popover; click one to
+  start the session and open it in its own window. While a session is open the button
   is **Resume workout** instead, and nothing new is started.
 - **Open Setrai**.
 - **Ask coach** opens your default Omarchy agent as a training coach (see

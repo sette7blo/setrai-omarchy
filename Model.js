@@ -255,6 +255,27 @@ function parseStatistics(text) {
   }
 }
 
+// GET /api/programs -> { programs: [{ id, name, ... }] }, in the server's
+// order. Two programs with the same name get their id appended so the list
+// shows which is which.
+function parsePrograms(text) {
+  var data = parseJsonSafe(text, {})
+  var list = Array.isArray(data && data.programs) ? data.programs : []
+  var out = []
+  var seen = {}
+  for (var i = 0; i < list.length; i++) {
+    var id = finiteOrNull(list[i] && list[i].id)
+    var name = String((list[i] && list[i].name) || "").trim()
+    if (id === null || id <= 0 || Math.floor(id) !== id || !name) continue
+    seen[name] = (seen[name] || 0) + 1
+    out.push({ id: id, name: name })
+  }
+  for (var j = 0; j < out.length; j++) {
+    out[j].label = seen[out[j].name] > 1 ? out[j].name + " #" + out[j].id : out[j].name
+  }
+  return out
+}
+
 function parseProfile(text) {
   var data = parseJsonSafe(text, {})
   var profile = data && data.profile ? data.profile : {}
