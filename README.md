@@ -2,7 +2,7 @@
 
 Omarchy plugin for [Setrai](https://github.com/sette7blo/setrai): a bar icon
 with a popover showing readiness, this week's training and body weight, a
-one-tap resume for an open workout, Omarchy menu entries, a launcher
+one-tap resume for an open workout, a `setrai` command, a launcher
 `.desktop`, and agent skills so Claude Code, Codex or Copilot can start
 workouts and log body weight from natural language.
 
@@ -43,7 +43,7 @@ timestamp suffix).
 After install, click the bar icon, then the gear icon. Enter the server
 address and API key, click **Test connection**, then **Save**. Both are
 written to `~/.local/state/omarchy/setrai/credentials.json` (mode 600), the
-one place the plugin, the CLI, the menu, the launcher and the agent skills
+one place the plugin, the CLI, the launcher and the agent skills
 read them from. `--setrai-url` only pre-fills the address there.
 
 ## What gets installed
@@ -53,7 +53,6 @@ read them from. `--setrai-url` only pre-fills the address there.
 | `~/.config/omarchy/plugins/io.github.sette7blo.setrai` | Plugin dir (symlink to this repo) |
 | `~/.local/bin/setrai` | CLI wrapper (symlink) |
 | `~/.local/share/applications/setrai.desktop` | Launcher entry |
-| `~/.config/omarchy/extensions/omarchy-menu.jsonc` | Fitness menu entries, merged in as a marked block (the rest of the file is left alone) |
 | `~/.config/omarchy/hooks/post-boot.d/50-setrai.sh` | Autostart (optional, with `--autostart`) |
 | `~/.config/setrai-omarchy/config` | Compose path for the optional autostart hook |
 | `~/.local/state/omarchy/setrai/credentials.json` | Server address and API key (mode 600, written by the Settings view) |
@@ -80,28 +79,17 @@ From top to bottom:
   and a trend line over the full history. Type today's weight in the field
   and press Enter to log it (`POST /api/body-weight`); logging again the same
   day replaces the entry. Escape clears the field.
-- **Start workout** asks which saved program in the Omarchy menu, starts the
+- **Start workout** asks which saved program in an Omarchy picker, starts the
   session and opens it in its own window. While a session is open the button
   is **Resume workout** instead, and nothing new is started.
 - **Open Setrai**.
+- **Ask coach** opens your default Omarchy agent as a training coach (see
+  [Coach](#coach)).
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
 `GET /api/statistics` and `GET /api/profile` every 30 seconds by default (configurable), and when
 the popover opens. If the server is unreachable or the key is rejected, the
 popover says so and offers a button to open settings.
-
-## Omarchy menu
-
-A `Fitness` submenu:
-
-| Entry | Action |
-|---|---|
-| Open Setrai | `setrai open` |
-| Start workout | `setrai start` |
-| Quick workout | `setrai quick` |
-| Log body weight | `setrai body` |
-| Ask coach | `setrai coach` |
-| Show stats | `setrai stats` |
 
 ## CLI
 
@@ -138,11 +126,11 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 
 ### Coach
 
-"Ask coach" in the popover or the Fitness menu, or `setrai coach`, opens your default Omarchy
+"Ask coach" in the popover, or `setrai coach`, opens your default Omarchy
 agent (`omarchy default agent <name>`) in a terminal with a prompt that points
 it at these skills and starts with a weekly review. `setrai coach "<question>"`
-starts from your question instead. The entry is hidden until a default agent is
-set. Setrai has no AI of its own: your training data goes only to the agent
+starts from your question instead. With no default agent set, it says so in a
+notification. Setrai has no AI of its own: your training data goes only to the agent
 you chose, and the agent asks before it writes anything.
 
 The skills read the same connection file, so they use whatever address and
@@ -160,8 +148,11 @@ switches automatically.
 ./uninstall.sh
 ```
 
-Removes all symlinks, menu entries, the config dir, the connection file
+Removes all symlinks, the config dir, the connection file
 and the header-cache dir, plus the plugin registration with Omarchy.
+The plugin does not add anything to the Omarchy menu. Versions before 0.4.0
+added a Fitness section; `install.sh` and `uninstall.sh` both remove it.
+
 Does **not** touch the Setrai server or any API keys you've created
 server-side — revoke those under **Settings > API keys** in the Setrai
 web UI if you want them gone.
@@ -177,12 +168,11 @@ ReadinessView.qml          Overall readiness figure
 BodyChart.qml              Latest body weight, total change, trend line, entry field
 SettingsView.qml           Server address, API key and refresh form
 Model.js                   Pure-JS helpers (parsing and formatting only)
-bin/setrai                 CLI wrapper used by the menu + desktop entry
+bin/setrai                 CLI wrapper used by the popover + desktop entry
 bin/setrai-open.sh         URL opener the Panel shells out to (calls bin/setrai)
 setrai.desktop.in          Launcher template (install.sh fills in the CLI path)
-extensions/omarchy-menu.jsonc   Menu fragment
 hooks/post-boot.sh         Optional Docker-stack autostart
-agent-skill/               Five SKILL.md files for AI coaches
+agent-skill/               Seven SKILL.md files for AI coaches
 install.sh / uninstall.sh  Idempotent install, clean uninstall
 ```
 
