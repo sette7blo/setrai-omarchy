@@ -12,6 +12,11 @@ project uses [Semantic Versioning](https://semver.org/).
 - Start a workout from a saved program: `setrai start`, "Start workout" in the Fitness menu
   and a button in the popover ask which program, start the session and open it. If a workout
   is already in progress it is opened instead of starting a second one.
+- "Ask coach" in the Fitness menu (`setrai coach`) opens your default Omarchy agent with your
+  Setrai data and skills at hand. It is hidden until a default agent is set.
+- Two agent skills: `setrai-create-program` designs a program with you and saves it, and
+  `setrai-weekly-review` reads the week's sessions and suggests what to adjust. Run
+  `install.sh` again to link them.
 
 ### Changed
 - Weights follow the unit set in your Setrai profile. With `lb`, the popover shows body
@@ -22,6 +27,10 @@ project uses [Semantic Versioning](https://semver.org/).
 - `setrai quick` opens the session it started instead of the home page.
 
 ### Fixed
+- The Fitness menu never appeared: Omarchy reads one menu file, and the entries were linked
+  beside it. `install.sh` now merges them into `~/.config/omarchy/extensions/omarchy-menu.jsonc`
+  as a marked block, and `uninstall.sh` removes the block. Run `install.sh` again.
+- `setrai coach` says so when the default agent is not installed instead of doing nothing.
 - "Log body weight" in the Fitness menu did nothing. It now asks for the weight in an
   Omarchy menu prompt and confirms with a notification.
 - `setrai body` rejects values that are not a positive number instead of sending them.

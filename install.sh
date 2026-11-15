@@ -13,7 +13,10 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 PLUGIN_LINK="$CONFIG_HOME/omarchy/plugins/$PLUGIN_ID"
 CLI_LINK="$HOME/.local/bin/setrai"
 DESKTOP_LINK="$HOME/.local/share/applications/setrai.desktop"
-MENU_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
+MENU_FILE="$CONFIG_HOME/omarchy/extensions/omarchy-menu.jsonc"
+MENU_OLD_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
+MENU_BEGIN="// >>> setrai (managed by setrai-omarchy install.sh; do not edit inside)"
+MENU_END="// <<< setrai"
 HOOK_LINK="$CONFIG_HOME/omarchy/hooks/post-boot.d/50-setrai.sh"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 CONFIG_FILE="$CONFIG_HOME/setrai-omarchy/config"
@@ -127,9 +130,55 @@ install_desktop() {
   log "linked .desktop → $DESKTOP_LINK"
 }
 
+# Omarchy's menu reads one user file, extensions/omarchy-menu.jsonc, so the
+# Fitness entries are merged into it as a marked block rather than linked
+# beside it. The block goes right after the opening brace: every entry ends
+# with a comma, which the menu's parser accepts before a closing brace, so it
+# is valid whatever follows.
 install_menu() {
-  link_path "$PROJECT_DIR/extensions/omarchy-menu.jsonc" "$MENU_LINK"
-  log "linked menu extension → $MENU_LINK"
+  local src="$PROJECT_DIR/extensions/omarchy-menu.jsonc"
+  local block tmp
+  block="$(grep -E '^[[:space:]]*"' "$src" | sed -E 's/,?[[:space:]]*$/,/')"
+  mkdir -p "$(dirname "$MENU_FILE")"
+  if [[ -L "$MENU_OLD_LINK" ]]; then
+    unlink "$MENU_OLD_LINK"
+    log "removed unused menu link $MENU_OLD_LINK"
+  fi
+
+  tmp="$(mktemp -p "$(dirname "$MENU_FILE")" .omarchy-menu.XXXXXX)"
+  if [[ ! -s "$MENU_FILE" ]]; then
+    printf '{\n  %s\n%s\n  %s\n}\n' "$MENU_BEGIN" "$block" "$MENU_END" > "$tmp"
+  elif ! grep -qE '^[[:space:]]*\{[[:space:]]*$' "$MENU_FILE"; then
+    rm -f "$tmp"
+    log "could not find the opening brace in $MENU_FILE; add the entries from $src by hand"
+    return
+  else
+    MENU_BLOCK="$block" awk -v begin="$MENU_BEGIN" -v end="$MENU_END" '
+      index($0, begin) { skipping = 1; next }
+      skipping { if (index($0, end)) skipping = 0; next }
+      { print }
+      !placed && /^[[:space:]]*\{[[:space:]]*$/ {
+        print "  " begin; print ENVIRON["MENU_BLOCK"]; print "  " end
+        placed = 1
+      }
+    ' "$MENU_FILE" > "$tmp"
+  fi
+
+  if [[ -f "$MENU_FILE" ]] && cmp -s "$tmp" "$MENU_FILE"; then
+    rm -f "$tmp"
+  else
+    if [[ -f "$MENU_FILE" ]]; then
+      cp -p "$MENU_FILE" "$MENU_FILE.bak.$TIMESTAMP"
+      log "backed up $MENU_FILE"
+    fi
+    # mktemp makes the file private; the menu file is ordinary config.
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$MENU_FILE"
+  fi
+  log "merged Fitness entries into $MENU_FILE"
+  if command -v omarchy-menu >/dev/null 2>&1; then
+    omarchy-menu refresh >/dev/null 2>&1 || true
+  fi
 }
 
 install_hook() {
