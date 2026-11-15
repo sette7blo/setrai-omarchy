@@ -5,7 +5,7 @@ import "Model.js" as Model
 
 // Background service: polls Setrai's REST API with an API key and exposes
 // the values it returns (readiness, this week's sessions and volume, body
-// weight, an open workout) to the bar widget and the panel. It also sends
+// weight, an open workout, saved programs) to the bar widget and the panel. It also sends
 // the one thing the panel can enter, today's body weight. Nothing here
 // computes a figure the server does not already provide.
 Item {
@@ -38,6 +38,8 @@ Item {
   property var readiness: null              // whole %, from /api/recovery
   property var statistics: Model.parseStatistics("")
   property string weightUnit: "kg"          // "kg" | "lb", from /api/profile
+  property var programs: []                 // [{ id, name, label }], from /api/programs
+  property bool programsLoaded: false
   property string lastUpdatedAt: ""
   property string status: "idle"
   // "idle" | "polling" | "ok" | "unauthorized" | "unreachable" | "unconfigured" | "error"
@@ -136,7 +138,8 @@ Item {
       "sessions": "/api/sessions",
       "recovery": "/api/recovery",
       "statistics": "/api/statistics",
-      "profile": "/api/profile"
+      "profile": "/api/profile",
+      "programs": "/api/programs"
     }
     var path = pathForKind[kind] || ""
     if (!path) return
@@ -186,11 +189,20 @@ Item {
     else if (kind === "recovery") root.readiness = Model.parseRecovery(body).readiness
     else if (kind === "statistics") root.statistics = Model.parseStatistics(body)
     else if (kind === "profile") root.weightUnit = Model.parseProfile(body).weightUnit
+    else if (kind === "programs") {
+      root.programs = Model.parsePrograms(body)
+      root.programsLoaded = true
+    }
     root.lastUpdatedAt = new Date().toISOString()
     if (!root.reqQueue.length) {
       root.status = "ok"
       root.statusDetail = ""
     }
+  }
+
+  // Saved programs are only fetched when the panel asks which one to start.
+  function loadPrograms() {
+    enqueueRequest("programs")
   }
 
   // --- Body-weight entry ---------------------------------------------------

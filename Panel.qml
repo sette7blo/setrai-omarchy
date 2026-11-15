@@ -18,6 +18,9 @@ Panel {
   property var hostWidget: null
   property var service: null
   property bool showSettings: false
+  // The program list that "Start workout" opens in place of the main view.
+  property bool showPrograms: false
+  readonly property bool showMain: !showSettings && !showPrograms
 
   readonly property var barIdentity: hostWidget || root
 
@@ -47,6 +50,7 @@ Panel {
 
   readonly property string heroMeta: {
     if (showSettings) return "Settings"
+    if (showPrograms) return "Choose a program"
     if (!configured) return "Not connected"
     if (hasResume) return openWorkout.programName
       ? "Workout in progress: " + openWorkout.programName
@@ -63,7 +67,10 @@ Panel {
     target: root
     function onOpenedChanged() {
       if (root.service) root.service.panelOpen = root.opened
-      if (!root.opened) root.showSettings = false
+      if (!root.opened) {
+        root.showSettings = false
+        root.showPrograms = false
+      }
     }
   }
 
@@ -73,10 +80,17 @@ Panel {
     close()
   }
 
-  // Hands over to the CLI, which asks which program in the Omarchy menu.
-  function startWorkout() {
-    if (!bar || !root.hostWidget) return
-    bar.run(root.hostWidget.pluginDir + "/bin/setrai start")
+  function chooseProgram() {
+    if (root.service) root.service.loadPrograms()
+    root.showPrograms = true
+  }
+
+  // The CLI starts the session and opens it; if a workout is already in
+  // progress it opens that one instead.
+  function startProgram(id) {
+    var programId = Math.floor(Number(id))
+    if (!bar || !root.hostWidget || !(programId > 0)) return
+    bar.run(root.hostWidget.pluginDir + "/bin/setrai start " + programId)
     close()
   }
 
@@ -139,7 +153,10 @@ Panel {
             tooltipText: root.showSettings ? "Close settings" : "Settings"
             foreground: root.foreground
             fontFamily: root.fontFamily
-            onClicked: root.showSettings = !root.showSettings
+            onClicked: {
+              root.showPrograms = false
+              root.showSettings = !root.showSettings
+            }
           }
         }
       }
@@ -179,9 +196,79 @@ Panel {
         }
       }
 
+      // ---- Program picker ----
+      Column {
+        width: parent.width
+        spacing: Style.spacing.md
+        visible: root.showPrograms && !root.showSettings
+
+        Text {
+          textFormat: Text.PlainText
+          width: parent.width
+          visible: text !== ""
+          text: {
+            var svc = root.service
+            if (!svc || root.notice !== "") return ""
+            if (!svc.programsLoaded) return "Loading programs..."
+            return svc.programs.length ? "" : "No saved programs. Create one in Setrai first."
+          }
+          color: root.dim
+          wrapMode: Text.WordWrap
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+
+        Flickable {
+          id: programFlick
+          width: parent.width
+          height: Math.min(programColumn.implicitHeight, Style.space(320))
+          visible: programRepeater.count > 0
+          contentWidth: width
+          contentHeight: programColumn.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.VerticalFlick
+          interactive: contentHeight > height
+          ScrollBar.vertical: ScrollBar {
+            id: programScroll
+            policy: ScrollBar.AsNeeded
+          }
+
+          Column {
+            id: programColumn
+            width: programFlick.width - (programFlick.interactive ? programScroll.width + Style.space(6) : 0)
+            spacing: Style.spacing.sm
+
+            Repeater {
+              id: programRepeater
+              model: root.service ? root.service.programs : []
+              delegate: Button {
+                required property var modelData
+                width: programColumn.width
+                leftAlign: true
+                text: modelData.label
+                foreground: root.foreground
+                accent: root.accent
+                fontFamily: root.fontFamily
+                onClicked: root.startProgram(modelData.id)
+              }
+            }
+          }
+        }
+
+        Button {
+          text: "Back"
+          bordered: true
+          foreground: root.foreground
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onClicked: root.showPrograms = false
+        }
+      }
+
       // ---- Readiness ----
       ReadinessView {
-        visible: !root.showSettings && root.hasReadiness
+        visible: root.showMain && root.hasReadiness
         readiness: root.service ? root.service.readiness : null
         detail: root.lastWorkoutText
         foreground: root.foreground
@@ -192,14 +279,14 @@ Panel {
 
       PanelSeparator {
         foreground: root.foreground
-        visible: !root.showSettings && root.hasReadiness
+        visible: root.showMain && root.hasReadiness
       }
 
       // ---- Training ----
       Column {
         width: parent.width
         spacing: Style.spacing.md
-        visible: !root.showSettings && root.configured
+        visible: root.showMain && root.configured
 
         Repeater {
           model: {
@@ -247,7 +334,7 @@ Panel {
       // Shown without any entries too, so the first one can be logged here.
       BodyChart {
         id: bodyChart
-        visible: !root.showSettings && root.configured
+        visible: root.showMain && root.configured
         entries: root.service ? root.service.bodyEntries : []
         changeKg: root.service ? root.service.bodyChangeKg : null
         unit: root.weightUnit
@@ -260,14 +347,14 @@ Panel {
 
       PanelSeparator {
         foreground: root.foreground
-        visible: !root.showSettings && root.configured
+        visible: root.showMain && root.configured
       }
 
       // ---- Actions ----
       RowLayout {
         width: parent.width
         spacing: Style.spacing.lg
-        visible: !root.showSettings && root.configured
+        visible: root.showMain && root.configured
 
         Button {
           Layout.fillWidth: true
@@ -279,7 +366,7 @@ Panel {
           fontFamily: root.fontFamily
           onClicked: root.hasResume
             ? root.openSetrai(root.openWorkout.url)
-            : root.startWorkout()
+            : root.chooseProgram()
         }
         Button {
           Layout.fillWidth: !root.hasResume
