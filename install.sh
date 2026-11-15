@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent installer for the setrai Omarchy plugin.
-# Links the bar widget, CLI, launcher, menu entries and agent skills.
+# Links the bar widget, CLI, launcher and agent skills.
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ CLI_LINK="$HOME/.local/bin/setrai"
 DESKTOP_LINK="$HOME/.local/share/applications/setrai.desktop"
 MENU_FILE="$CONFIG_HOME/omarchy/extensions/omarchy-menu.jsonc"
 MENU_OLD_LINK="$CONFIG_HOME/omarchy/extensions/omarchy-menu-setrai.jsonc"
-MENU_BEGIN="// >>> setrai (managed by setrai-omarchy install.sh; do not edit inside)"
+MENU_BEGIN="// >>> setrai"
 MENU_END="// <<< setrai"
 HOOK_LINK="$CONFIG_HOME/omarchy/hooks/post-boot.d/50-setrai.sh"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
@@ -130,52 +130,24 @@ install_desktop() {
   log "linked .desktop → $DESKTOP_LINK"
 }
 
-# Omarchy's menu reads one user file, extensions/omarchy-menu.jsonc, so the
-# Fitness entries are merged into it as a marked block rather than linked
-# beside it. The block goes right after the opening brace: every entry ends
-# with a comma, which the menu's parser accepts before a closing brace, so it
-# is valid whatever follows.
-install_menu() {
-  local src="$PROJECT_DIR/extensions/omarchy-menu.jsonc"
-  local block tmp
-  block="$(grep -E '^[[:space:]]*"' "$src" | sed -E 's/,?[[:space:]]*$/,/')"
-  mkdir -p "$(dirname "$MENU_FILE")"
+# Earlier versions added a Fitness section to the Omarchy menu. The plugin no
+# longer touches the menu, so take out what they left behind.
+remove_old_menu() {
   if [[ -L "$MENU_OLD_LINK" ]]; then
     unlink "$MENU_OLD_LINK"
-    log "removed unused menu link $MENU_OLD_LINK"
+    log "removed old menu link $MENU_OLD_LINK"
   fi
-
+  [[ -f "$MENU_FILE" ]] && grep -qF -- "$MENU_BEGIN" "$MENU_FILE" || return 0
+  local tmp
   tmp="$(mktemp -p "$(dirname "$MENU_FILE")" .omarchy-menu.XXXXXX)"
-  if [[ ! -s "$MENU_FILE" ]]; then
-    printf '{\n  %s\n%s\n  %s\n}\n' "$MENU_BEGIN" "$block" "$MENU_END" > "$tmp"
-  elif ! grep -qE '^[[:space:]]*\{[[:space:]]*$' "$MENU_FILE"; then
-    rm -f "$tmp"
-    log "could not find the opening brace in $MENU_FILE; add the entries from $src by hand"
-    return
-  else
-    MENU_BLOCK="$block" awk -v begin="$MENU_BEGIN" -v end="$MENU_END" '
-      index($0, begin) { skipping = 1; next }
-      skipping { if (index($0, end)) skipping = 0; next }
-      { print }
-      !placed && /^[[:space:]]*\{[[:space:]]*$/ {
-        print "  " begin; print ENVIRON["MENU_BLOCK"]; print "  " end
-        placed = 1
-      }
-    ' "$MENU_FILE" > "$tmp"
-  fi
-
-  if [[ -f "$MENU_FILE" ]] && cmp -s "$tmp" "$MENU_FILE"; then
-    rm -f "$tmp"
-  else
-    if [[ -f "$MENU_FILE" ]]; then
-      cp -p "$MENU_FILE" "$MENU_FILE.bak.$TIMESTAMP"
-      log "backed up $MENU_FILE"
-    fi
-    # mktemp makes the file private; the menu file is ordinary config.
-    chmod 644 "$tmp"
-    mv -f "$tmp" "$MENU_FILE"
-  fi
-  log "merged Fitness entries into $MENU_FILE"
+  awk -v begin="$MENU_BEGIN" -v end="$MENU_END" '
+    index($0, begin) { skipping = 1; next }
+    skipping { if (index($0, end)) skipping = 0; next }
+    { print }
+  ' "$MENU_FILE" > "$tmp"
+  chmod 644 "$tmp"
+  mv -f "$tmp" "$MENU_FILE"
+  log "removed the Fitness section from $MENU_FILE"
   if command -v omarchy-menu >/dev/null 2>&1; then
     omarchy-menu refresh >/dev/null 2>&1 || true
   fi
@@ -225,7 +197,7 @@ main() {
   install_plugin_link
   install_cli
   install_desktop
-  install_menu
+  remove_old_menu
   install_hook
   install_skills
   register_omarchy

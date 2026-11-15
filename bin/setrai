@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CLI wrapper for the Setrai Omarchy plugin.
-# Called by the Omarchy menu, the .desktop launcher, and interactively.
+# Called by the bar popover, the .desktop launcher, and interactively.
 
 set -euo pipefail
 
@@ -62,7 +62,7 @@ cmd_quick() {
 }
 
 # Reports to the terminal when there is one, otherwise as a desktop
-# notification: the Omarchy menu runs these commands with no terminal.
+# notification: the bar popover runs these commands with no terminal.
 report() {
   if [[ -t 1 ]]; then
     printf '%s\n' "$1"

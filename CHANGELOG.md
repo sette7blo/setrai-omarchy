@@ -6,6 +6,13 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- The Fitness section in the Omarchy menu. The popover already covers opening Setrai, starting
+  a workout, logging body weight and asking the coach, and the plugin no longer edits
+  `~/.config/omarchy/extensions/omarchy-menu.jsonc`. Run `install.sh` again to take the section
+  out of your menu. Quick workout and the Statistics page stay available as `setrai quick` and
+  `setrai stats`.
+
 ## [v0.3.0] - 2026-11-15
 
 ### Added

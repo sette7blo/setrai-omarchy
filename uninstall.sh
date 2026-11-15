@@ -41,7 +41,7 @@ remove_link "$DESKTOP_LINK"
 remove_link "$MENU_OLD_LINK"
 remove_link "$HOOK_LINK"
 
-# The Fitness entries install.sh merged into the user's menu file.
+# The Fitness section that versions before 0.4.0 merged into the user's menu file.
 if [[ -f "$MENU_FILE" ]] && grep -qF -- "$MENU_BEGIN" "$MENU_FILE"; then
   tmp="$(mktemp -p "$(dirname "$MENU_FILE")" .omarchy-menu.XXXXXX)"
   awk -v begin="$MENU_BEGIN" -v end="$MENU_END" '
