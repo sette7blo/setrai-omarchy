@@ -7,6 +7,7 @@
   "license": "MIT",
   "description": "Glanceable Setrai training state in the Omarchy bar: readiness, this week's sessions and volume, body weight, and a one-tap resume for an open workout.",
   "homepage": "https://github.com/sette7blo/setrai-omarchy",
+  "funding": { "monero": "42iX2Knyef7Wi4rZxcWMw84DY7x1HUk67LKCqiqB1r5eLicJFvGbpCzUSiAqV8rGzbPW6yzmSGE93ZikU3PUkwnvQopggMB" },
   "kinds": [
     "service",
     "bar-widget"
