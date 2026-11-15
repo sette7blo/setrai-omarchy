@@ -171,6 +171,8 @@ install_menu() {
       cp -p "$MENU_FILE" "$MENU_FILE.bak.$TIMESTAMP"
       log "backed up $MENU_FILE"
     fi
+    # mktemp makes the file private; the menu file is ordinary config.
+    chmod 644 "$tmp"
     mv -f "$tmp" "$MENU_FILE"
   fi
   log "merged Fitness entries into $MENU_FILE"

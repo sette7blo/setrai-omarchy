@@ -49,6 +49,7 @@ if [[ -f "$MENU_FILE" ]] && grep -qF -- "$MENU_BEGIN" "$MENU_FILE"; then
     skipping { if (index($0, end)) skipping = 0; next }
     { print }
   ' "$MENU_FILE" > "$tmp"
+  chmod 644 "$tmp"
   mv -f "$tmp" "$MENU_FILE"
   log "removed Fitness entries from $MENU_FILE"
 fi
