@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.4] - 2026-11-18
+
 ### Fixed
 - The launcher (`setrai.desktop`) runs the plugin's own `bin/setrai` instead of `~/.local/bin/setrai`,
   which may belong to another program when the installer left it alone. Run `install.sh` again to rewrite a launcher written by an earlier version.
@@ -100,7 +102,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.4...HEAD
+[v0.4.4]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.3...v0.4.4
 [v0.4.3]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...v0.4.1
