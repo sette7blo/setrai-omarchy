@@ -6,6 +6,12 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The installer no longer moves an existing `~/.local/bin/setrai`, `setrai.desktop` or agent
+  skill aside to put its own link there. A path that is already taken is left as it is,
+  and the plugin works without the link. The uninstaller removes only links that point
+  into the plugin. Backups made by earlier versions (`*.bak.<date>`) are not touched.
+
 ## [v0.4.2] - 2026-11-15
 
 ### Added

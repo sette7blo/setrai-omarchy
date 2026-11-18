@@ -4,9 +4,8 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PLUGIN_ID="io.github.sette7blo.setrai"
-TIMESTAMP="$(date +%Y%m%d%H%M%S)"
 
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -65,18 +64,30 @@ fi
 
 log() { printf '[setrai] %s\n' "$*"; }
 
+# Never replaces or moves anything: when the path is already taken by something
+# that is not this plugin's link, it is left as it is. The plugin calls its own
+# bin/ directly, so it works without the link.
 link_path() {
   local source_path="$1"
   local target_path="$2"
   mkdir -p "$(dirname "$target_path")"
   if [[ -L "$target_path" && "$(readlink -f "$target_path")" == "$(readlink -f "$source_path")" ]]; then
-    return
+    return 0
   fi
   if [[ -e "$target_path" || -L "$target_path" ]]; then
-    mv "$target_path" "$target_path.bak.$TIMESTAMP"
-    log "backed up existing $target_path"
+    log "left $target_path as it is: something else is already there"
+    return 0
   fi
   ln -s "$source_path" "$target_path"
+  log "linked $target_path"
+}
+
+# A link that points into this plugin, as opposed to one the user made.
+ours() {
+  local target
+  [[ -L "$1" ]] || return 1
+  target="$(readlink -m "$1")"
+  [[ "$target" == "$PROJECT_DIR" || "$target" == "$PROJECT_DIR/"* ]]
 }
 
 write_config() {
@@ -113,13 +124,11 @@ write_connection() {
 
 install_plugin_link() {
   link_path "$PROJECT_DIR" "$PLUGIN_LINK"
-  log "linked plugin dir → $PLUGIN_LINK"
 }
 
 install_cli() {
   chmod +x "$PROJECT_DIR/bin/setrai"
   link_path "$PROJECT_DIR/bin/setrai" "$CLI_LINK"
-  log "linked CLI → $CLI_LINK"
 }
 
 install_desktop() {
@@ -127,13 +136,12 @@ install_desktop() {
   local tmp="$PROJECT_DIR/setrai.desktop"
   sed "s|@@SETRAI_CLI@@|$CLI_LINK|g" "$PROJECT_DIR/setrai.desktop.in" > "$tmp"
   link_path "$tmp" "$DESKTOP_LINK"
-  log "linked .desktop → $DESKTOP_LINK"
 }
 
 # Earlier versions added a Fitness section to the Omarchy menu. The plugin no
 # longer touches the menu, so take out what they left behind.
 remove_old_menu() {
-  if [[ -L "$MENU_OLD_LINK" ]]; then
+  if ours "$MENU_OLD_LINK"; then
     unlink "$MENU_OLD_LINK"
     log "removed old menu link $MENU_OLD_LINK"
   fi
@@ -157,9 +165,8 @@ install_hook() {
   if $AUTOSTART; then
     chmod +x "$PROJECT_DIR/hooks/post-boot.sh"
     link_path "$PROJECT_DIR/hooks/post-boot.sh" "$HOOK_LINK"
-    log "linked autostart hook → $HOOK_LINK"
   else
-    [[ -L "$HOOK_LINK" ]] && { unlink "$HOOK_LINK"; log "removed stale autostart hook"; } || true
+    ours "$HOOK_LINK" && { unlink "$HOOK_LINK"; log "removed stale autostart hook"; } || true
   fi
 }
 
@@ -171,7 +178,6 @@ install_skills() {
     for agent_home in "$HOME/.claude" "$HOME/.codex" "$HOME/.agents" "$HOME/.copilot"; do
       if [[ -d "$agent_home" ]]; then
         link_path "${skill_src%/}" "$agent_home/skills/$skill_name"
-        log "linked skill $skill_name → $agent_home/skills/"
       fi
     done
   done
