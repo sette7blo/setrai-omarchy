@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.3] - 2026-11-18
+
 ### Fixed
 - The installer no longer moves an existing `~/.local/bin/setrai`, `setrai.desktop` or agent
   skill aside to put its own link there. A path that is already taken is left as it is,
@@ -92,7 +94,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.3...HEAD
+[v0.4.3]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...v0.4.2
 [v0.4.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.0...v0.4.1
 [v0.4.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.3.0...v0.4.0
