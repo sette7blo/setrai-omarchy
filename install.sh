@@ -131,10 +131,25 @@ install_cli() {
   link_path "$PROJECT_DIR/bin/setrai" "$CLI_LINK"
 }
 
+# The launcher runs the plugin's own bin/setrai, never ~/.local/bin/setrai:
+# that path may belong to another program the installer left alone. A plugin
+# path that would need quoting in an Exec key gets no launcher at all.
+desktop_path_ok() {
+  [[ "$PROJECT_DIR" =~ ^[A-Za-z0-9._/+-]+$ ]]
+}
+
+render_desktop() {
+  sed "s|@@SETRAI_CLI@@|$PROJECT_DIR/bin/setrai|g" "$PROJECT_DIR/setrai.desktop.in"
+}
+
 install_desktop() {
   # The launcher goes through the CLI so it follows the configured address.
   local tmp="$PROJECT_DIR/setrai.desktop"
-  sed "s|@@SETRAI_CLI@@|$CLI_LINK|g" "$PROJECT_DIR/setrai.desktop.in" > "$tmp"
+  if ! desktop_path_ok; then
+    log "no launcher: the plugin path has characters a launcher cannot hold safely"
+    return 0
+  fi
+  render_desktop > "$tmp"
   link_path "$tmp" "$DESKTOP_LINK"
 }
 

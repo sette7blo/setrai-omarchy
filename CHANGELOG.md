@@ -6,6 +6,12 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The launcher (`setrai.desktop`) runs the plugin's own `bin/setrai` instead of `~/.local/bin/setrai`,
+  which may belong to another program when the installer left it alone. Run `install.sh` again to rewrite a launcher written by an earlier version.
+  If the plugin folder's path holds characters a launcher cannot carry safely, no
+  launcher is made.
+
 ## [v0.4.3] - 2026-11-18
 
 ### Fixed
