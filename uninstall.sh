@@ -4,6 +4,7 @@
 
 set -euo pipefail
 
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PLUGIN_ID="io.github.sette7blo.setrai"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
@@ -22,12 +23,15 @@ CACHE_DIR="$CACHE_HOME/omarchy/setrai"
 
 log() { printf '[setrai] %s\n' "$*"; }
 
+# Removes only links that point into this plugin; a command or launcher of the
+# same name from somewhere else stays.
 remove_link() {
-  local path="$1"
-  if [[ -L "$path" ]]; then
-    unlink "$path"
-    log "removed $path"
-  fi
+  local path="$1" target
+  [[ -L "$path" ]] || return 0
+  target="$(readlink -m "$path")"
+  [[ "$target" == "$PROJECT_DIR" || "$target" == "$PROJECT_DIR/"* ]] || return 0
+  unlink "$path"
+  log "removed $path"
 }
 
 if command -v omarchy >/dev/null 2>&1; then
