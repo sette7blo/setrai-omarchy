@@ -83,7 +83,8 @@ From top to bottom:
   start the session and open it in its own window. While a session is open the button
   is **Resume workout** instead, and nothing new is started.
 - **Open Setrai**.
-- **Ask coach** opens your default Omarchy agent as a training coach (see
+- **Ask coach**, once the coach is switched on in Settings, docks Setrai on the
+  left and opens your default Omarchy agent beside it as a training coach (see
   [Coach](#coach)).
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
@@ -126,12 +127,54 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 
 ### Coach
 
-"Ask coach" in the popover, or `setrai coach`, opens your default Omarchy
-agent (`omarchy default agent <name>`) in a terminal with a prompt that points
-it at these skills and starts with a weekly review. `setrai coach "<question>"`
-starts from your question instead. With no default agent set, it says so in a
-notification. Setrai has no AI of its own: your training data goes only to the agent
-you chose, and the agent asks before it writes anything.
+The coach is off until you turn it on: open the popover's Settings and switch
+on **Enable the coach**. That adds the "Ask coach" button. Typing `setrai coach`
+in a terminal works either way.
+
+"Ask coach", or `setrai coach`, opens your default Omarchy agent
+(`omarchy default agent <name>`) in a terminal with a prompt that points it at
+these skills and starts with a weekly review. `setrai coach "<question>"`
+starts from your question instead. The coach works with claude, codex,
+cursor-agent and copilot. Omarchy's own launcher starts agents with their
+permission prompts switched off; the coach starts the agent itself with its
+normal prompts left in place, so it asks before it runs commands, and the
+prompt tells it to ask before anything that writes to Setrai. If the coach
+cannot open (no default agent, or one it does not support), Settings says why
+and the button stays hidden; `setrai coach --check` prints the same reason.
+Setrai has no AI of its own: your training data goes only to the agent you
+chose.
+
+The skills reach Setrai only through two commands in the plugin's `bin`
+folder: `setrai-read /api/<path>` (GET) and
+`setrai-write <METHOD> /api/<path> '<json>'` (POST, PUT, PATCH, DELETE). They
+take only `/api/` paths, use the address and key saved in Settings (never an
+environment override), and pass the key to curl on stdin, so the agent never
+sees it. Because every Setrai call is one of these two commands, the coach can
+pre-approve them. With the coach on, Settings has two more switches, both off
+by default:
+
+- **Read Setrai without asking**: `setrai-read` runs without a prompt.
+- **Change Setrai without asking**: `setrai-write` and `setrai start`/`open`
+  run without a prompt, and the coach makes a change you asked for without
+  asking you to confirm it. A program it designed is still shown before it is
+  saved.
+
+The approvals are passed for the coach's session only, with full paths, so
+nothing else the agent wants to run is approved: claude gets `--allowedTools`,
+copilot `--allow-tool`, and cursor-agent an allow list in
+`~/.local/state/omarchy/setrai/coach/.cursor/cli.json`, the folder the coach
+starts in. Your own agent settings are not touched. Codex has no per-command
+approval, so with codex the coach still asks.
+
+From the popover, Setrai docks on the left edge of the screen while the coach
+runs, and the terminal tiles into the space to its right. The dock shows
+readiness, this week's sessions, volume and streak, the body weight chart,
+recent sessions and saved programs, and refreshes every 15 seconds, so a
+program the coach saves or a weight it logs appears there. It has no buttons
+of its own: ask the coach, or use the popover. The dock is shown only on the
+coach's workspace and goes away when you close the coach terminal, or with
+its close button, which leaves the terminal open. `setrai coach` from a
+terminal opens the agent without the dock.
 
 The skills read the same connection file, so they use whatever address and
 key you saved in the plugin's Settings view.
@@ -164,11 +207,13 @@ manifest.json              Plugin manifest (kinds:[service, bar-widget])
 Service.qml                Background poller + connection store
 BarWidget.qml              The bar icon
 Panel.qml                  The click-to-open popover
+CoachDock.qml              Setrai docked beside the coach terminal
 ReadinessView.qml          Overall readiness figure
 BodyChart.qml              Latest body weight, total change, trend line, entry field
 SettingsView.qml           Server address, API key and refresh form
 Model.js                   Pure-JS helpers (parsing and formatting only)
 bin/setrai                 CLI wrapper used by the popover + desktop entry
+bin/setrai-read / -write   The only way the skills reach the Setrai API
 bin/setrai-open.sh         URL opener the Panel shells out to (calls bin/setrai)
 setrai.desktop.in          Launcher template (install.sh fills in the CLI path)
 hooks/post-boot.sh         Optional Docker-stack autostart

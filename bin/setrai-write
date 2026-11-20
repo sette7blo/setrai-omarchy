@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Sends one POST, PUT, PATCH or DELETE request to the Setrai server saved in the
+# plugin's Settings and prints the response.
+# Usage: setrai-write <METHOD> /api/<path> ['<json body>']
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/setrai" api-write "$@"

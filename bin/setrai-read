@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Sends one GET request to the Setrai server saved in the plugin's Settings
+# and prints the response. Usage: setrai-read /api/<path>
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/setrai" api-read "$@"

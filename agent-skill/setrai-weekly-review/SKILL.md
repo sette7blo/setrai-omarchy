@@ -9,29 +9,32 @@ Use this when the user wants a **coach's read of their recent training**: what
 they did, how it compares with earlier weeks, and what to do next. It only
 reads; it never changes anything in Setrai.
 
-Connection: read `baseUrl` and `apiKey` from
-`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
-Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
-them; the address defaults to `http://localhost:3000`. Send
-`Authorization: Bearer <apiKey>` on every request.
+Connection: reach Setrai only through the plugin's two commands, never with
+curl and never by reading its credentials file. `setrai-read /api/<path>` sends
+a GET; `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). Both print the
+JSON response and use the server and key saved in the plugin's Settings. The
+coach prompt gives their full paths: call them by those paths. Outside the
+coach they are in the plugin's `bin` folder, two folders above this skill's
+real location.
 
 ## Data to read
 
-1. `GET <baseUrl>/api/statistics` → `{ statistics: { trainingFrequency,
+1. `setrai-read /api/statistics` → `{ statistics: { trainingFrequency,
    weeklyVolume, volumeByMuscle, volumeByExercise, personalRecords,
    trainingStreak, bodyWeight, bodyWeightChangeKg } }`. See
    `setrai-show-stats` for the fields.
-2. `GET <baseUrl>/api/recovery` → per-muscle recovery and the overall
+2. `setrai-read /api/recovery` → per-muscle recovery and the overall
    `readiness`. See `setrai-recovery` for the fields.
-3. `GET <baseUrl>/api/sessions` → `{ sessions: [{ id, programName, startedAt,
+3. `setrai-read /api/sessions` → `{ sessions: [{ id, programName, startedAt,
    finishedAt, ... }] }`, newest first. The list does **not** include the
    logged sets. Skip sessions whose `finishedAt` is `null`; they are still in
    progress.
 4. For each session finished in the week under review:
-   `GET <baseUrl>/api/sessions/<id>` → `{ session: { programName, startedAt,
+   `setrai-read /api/sessions/<id>` → `{ session: { programName, startedAt,
    finishedAt, plannedExercises, sets: [{ exerciseName, setNumber, reps,
    weight, done }] } }`. `weight` is in kg and is `null` for bodyweight sets.
-5. `GET <baseUrl>/api/profile` → `trainingGoal`, `weightUnit` and
+5. `setrai-read /api/profile` → `trainingGoal`, `weightUnit` and
    `targetWeightKg`, so the advice fits the goal.
 
 "The week" is the current Monday-to-Sunday week by default. If it has no

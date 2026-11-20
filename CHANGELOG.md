@@ -6,6 +6,27 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- "Ask coach" docks Setrai on the left edge of the screen and opens the coach terminal
+  beside it on the same workspace. The dock reserves its width, so Hyprland tiles the
+  terminal into the rest of the screen. It shows readiness, this week's sessions, volume
+  and streak, the body weight chart, recent sessions and saved programs, and refreshes
+  every 15 seconds so the coach's changes show up. It is shown only on the coach's
+  workspace, and goes away when the coach terminal closes or with its close button.
+
+### Changed
+- The coach is off by default. Switch it on in Settings ("Enable the coach") to get the
+  Ask coach button back; `setrai coach` in a terminal works either way.
+- The coach opens the agent with its normal permission prompts. It used to go through
+  `omarchy-agent`, which switches them off. It now supports claude, codex, cursor-agent
+  and copilot; Settings and `setrai coach --check` say why it cannot open with any other.
+- The skills reach Setrai through `bin/setrai-read` and `bin/setrai-write` instead of curl
+  and the credentials file. The key no longer passes through the agent.
+- Two more coach switches in Settings, off by default: "Read Setrai without asking" and
+  "Change Setrai without asking". They pre-approve exactly those commands for the coach's
+  session (claude, cursor-agent, copilot; codex still asks). The coach now starts in its own
+  folder, `~/.local/state/omarchy/setrai/coach`.
+
 ## [v0.4.4] - 2026-11-18
 
 ### Fixed
