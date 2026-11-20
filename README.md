@@ -83,8 +83,8 @@ From top to bottom:
   start the session and open it in its own window. While a session is open the button
   is **Resume workout** instead, and nothing new is started.
 - **Open Setrai**.
-- **Ask coach** opens your default Omarchy agent as a training coach (see
-  [Coach](#coach)).
+- **Ask coach** docks Setrai on the left and opens your default Omarchy agent
+  beside it as a training coach (see [Coach](#coach)).
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
 `GET /api/statistics` and `GET /api/profile` every 30 seconds by default (configurable), and when
@@ -133,6 +133,16 @@ starts from your question instead. With no default agent set, it says so in a
 notification. Setrai has no AI of its own: your training data goes only to the agent
 you chose, and the agent asks before it writes anything.
 
+From the popover, Setrai docks on the left edge of the screen while the coach
+runs, and the terminal tiles into the space to its right. The dock shows
+readiness, this week's sessions, volume and streak, the body weight chart,
+recent sessions and saved programs, and refreshes every 15 seconds, so a
+program the coach saves or a weight it logs appears there. It has no buttons
+of its own: ask the coach, or use the popover. The dock is shown only on the
+coach's workspace and goes away when you close the coach terminal, or with
+its close button, which leaves the terminal open. `setrai coach` from a
+terminal opens the agent without the dock.
+
 The skills read the same connection file, so they use whatever address and
 key you saved in the plugin's Settings view.
 
@@ -164,6 +174,7 @@ manifest.json              Plugin manifest (kinds:[service, bar-widget])
 Service.qml                Background poller + connection store
 BarWidget.qml              The bar icon
 Panel.qml                  The click-to-open popover
+CoachDock.qml              Setrai docked beside the coach terminal
 ReadinessView.qml          Overall readiness figure
 BodyChart.qml              Latest body weight, total change, trend line, entry field
 SettingsView.qml           Server address, API key and refresh form

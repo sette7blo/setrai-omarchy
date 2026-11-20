@@ -19,6 +19,9 @@ Column {
   property color dim: Qt.darker(foreground, 1.55)
   property color accent: Color.accent
   property string fontFamily: Style.font.family
+  // The coach dock shows the chart only; entries there go through the coach.
+  property bool allowEntry: true
+  property real chartHeight: Style.space(40)
 
   readonly property var _latest: Model.latestBodyEntry(entries)
   readonly property string deltaText: {
@@ -86,7 +89,7 @@ Column {
   // ---- Trend line ----
   Item {
     width: parent.width
-    height: Style.space(40)
+    height: root.chartHeight
 
     Canvas {
       id: chart
@@ -179,6 +182,7 @@ Column {
   RowLayout {
     width: parent.width
     spacing: Style.spacing.lg
+    visible: root.allowEntry
 
     TextField {
       id: weightField

@@ -94,11 +94,12 @@ Panel {
     close()
   }
 
-  // Opens the default Omarchy agent in a terminal; the CLI reports if none is set.
+  // Docks Setrai on the left and opens the default Omarchy agent beside it;
+  // the CLI reports if no agent is set.
   function askCoach() {
-    if (!bar || !root.hostWidget) return
-    bar.run(root.hostWidget.pluginDir + "/bin/setrai coach")
+    if (!root.service) return
     close()
+    root.service.startCoach()
   }
 
   Component {

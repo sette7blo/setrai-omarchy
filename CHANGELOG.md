@@ -6,6 +6,14 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- "Ask coach" docks Setrai on the left edge of the screen and opens the coach terminal
+  beside it on the same workspace. The dock reserves its width, so Hyprland tiles the
+  terminal into the rest of the screen. It shows readiness, this week's sessions, volume
+  and streak, the body weight chart, recent sessions and saved programs, and refreshes
+  every 15 seconds so the coach's changes show up. It is shown only on the coach's
+  workspace, and goes away when the coach terminal closes or with its close button.
+
 ## [v0.4.4] - 2026-11-18
 
 ### Fixed
