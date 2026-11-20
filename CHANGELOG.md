@@ -20,6 +20,12 @@ project uses [Semantic Versioning](https://semver.org/).
 - The coach opens the agent with its normal permission prompts. It used to go through
   `omarchy-agent`, which switches them off. It now supports claude, codex, cursor-agent
   and copilot; Settings and `setrai coach --check` say why it cannot open with any other.
+- The skills reach Setrai through `bin/setrai-read` and `bin/setrai-write` instead of curl
+  and the credentials file. The key no longer passes through the agent.
+- Two more coach switches in Settings, off by default: "Read Setrai without asking" and
+  "Change Setrai without asking". They pre-approve exactly those commands for the coach's
+  session (claude, cursor-agent, copilot; codex still asks). The coach now starts in its own
+  folder, `~/.local/state/omarchy/setrai/coach`.
 
 ## [v0.4.4] - 2026-11-18
 

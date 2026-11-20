@@ -7,12 +7,15 @@ description: Log a body-weight measurement in Setrai for a specific date (defaul
 
 Use this when the user wants to **record a body-weight measurement**.
 
-Endpoint: `POST <baseUrl>/api/body-weight`
-Connection: read `baseUrl` and `apiKey` from
-`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
-Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
-them; the address defaults to `http://localhost:3000`. Send
-`Authorization: Bearer <apiKey>` on every request.
+Endpoint: `setrai-write POST /api/body-weight`
+Connection: reach Setrai only through the plugin's two commands, never with
+curl and never by reading its credentials file. `setrai-read /api/<path>` sends
+a GET; `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). Both print the
+JSON response and use the server and key saved in the plugin's Settings. The
+coach prompt gives their full paths: call them by those paths. Outside the
+coach they are in the plugin's `bin` folder, two folders above this skill's
+real location.
 
 ## Request shape
 
@@ -39,7 +42,10 @@ date is replaced.
 ## Confirmation (required)
 
 Body-weight entries show up in the user's progress chart. Confirm before
-writing:
+writing. If the coach prompt says Setrai changes are pre-approved, a change the user
+asked for in plain words needs no extra confirmation: make it, then say what
+changed.
+Otherwise:
 
 ```
 User: log 72.4 today

@@ -8,15 +8,18 @@ description: Generate a Setrai "quick workout" that respects muscle recovery, th
 Two-step: **generate** a workout plan from the user's constraints, then
 **start** it as a live session if they want to do it right now.
 
-Connection: read `baseUrl` and `apiKey` from
-`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
-Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
-them; the address defaults to `http://localhost:3000`. Send
-`Authorization: Bearer <apiKey>` on every request.
+Connection: reach Setrai only through the plugin's two commands, never with
+curl and never by reading its credentials file. `setrai-read /api/<path>` sends
+a GET; `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). Both print the
+JSON response and use the server and key saved in the plugin's Settings. The
+coach prompt gives their full paths: call them by those paths. Outside the
+coach they are in the plugin's `bin` folder, two folders above this skill's
+real location.
 
 ## Step 1 — Generate
 
-`POST <baseUrl>/api/quick-workout` with a JSON body describing constraints.
+`setrai-write POST /api/quick-workout` with a JSON body describing constraints.
 Every field is optional; `{}` is valid.
 
 ```json
@@ -63,7 +66,7 @@ Start it now?
 
 ## Step 2 — Start (only on confirm)
 
-`POST <baseUrl>/api/quick-workout/start` with `{ "workout": <the workout
+`setrai-write POST /api/quick-workout/start` with `{ "workout": <the workout
 object from step 1> }`. Response: `201 { workout, program, session: { id, ... } }`.
 
 Then surface the live-session URL (`/sessions/<id>`) and offer to open the
@@ -72,7 +75,10 @@ browser via `setrai open /sessions/<id>`.
 ## Confirmation (required for Step 2)
 
 Starting a session mutates state. Never POST to `/start` without an explicit
-"yes".
+"yes", unless the user asked for this workout to be started.
+If the coach prompt says Setrai changes are pre-approved, a change the user
+asked for in plain words needs no extra confirmation: make it, then say what
+changed.
 
 ## Error handling
 

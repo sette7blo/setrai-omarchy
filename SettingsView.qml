@@ -233,6 +233,42 @@ Column {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
+    // Pre-approvals: the coach starts with exactly these Setrai commands
+    // allowed, for that session only. Everything else still asks.
+    Toggle {
+      width: parent.width
+      visible: !!root.service && root.service.coachEnabled
+      label: "Read Setrai without asking"
+      description: "Stats, sessions, programs, recovery and your profile."
+      checked: root.service ? root.service.coachRead : false
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: if (root.service) root.service.persistSettings({ coachRead: !root.service.coachRead })
+    }
+    Toggle {
+      width: parent.width
+      visible: !!root.service && root.service.coachEnabled
+      label: "Change Setrai without asking"
+      description: "Saving or changing programs, starting workouts, logging weight. A program the coach designs is still shown before it is saved."
+      checked: root.service ? root.service.coachWrite : false
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: if (root.service) root.service.persistSettings({ coachWrite: !root.service.coachWrite })
+    }
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: !!root.service && root.service.coachEnabled && (root.service.coachRead || root.service.coachWrite)
+      text: root.service && root.service.agentName === "codex"
+        ? "Codex has no per-command approval, so it still asks every time."
+        : "Only the plugin's own Setrai commands are allowed, for the coach's session only. Anything else the agent wants to run still asks. Applies the next time you ask the coach."
+      color: root.dim
+      wrapMode: Text.WordWrap
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
     Text {
       textFormat: Text.PlainText
       width: parent.width

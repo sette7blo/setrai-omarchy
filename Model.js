@@ -16,7 +16,7 @@ var DEFAULT_BASE_URL = "http://localhost:3000"
 // it into the connection file once.
 
 function defaultSettings() {
-  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "", coach: false }
+  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "", coach: false, coachRead: false, coachWrite: false }
 }
 
 function clampPoll(value) {
@@ -40,7 +40,10 @@ function normalizeSettings(raw) {
     legacyBaseUrl: normalizeBaseUrl(data.legacyBaseUrl !== undefined ? data.legacyBaseUrl : data.baseUrl),
     // The coach is the one feature that involves an AI agent. It is off until
     // the user turns it on in the settings.
-    coach: data.coach === true
+    coach: data.coach === true,
+    // Pre-approvals for the coach's Setrai commands, also off until chosen.
+    coachRead: data.coachRead === true,
+    coachWrite: data.coachWrite === true
   }
 }
 
@@ -77,7 +80,9 @@ function settingsPayload(settings) {
   return {
     id: PLUGIN_ID,
     pollSeconds: data.pollSeconds,
-    coach: data.coach
+    coach: data.coach,
+    coachRead: data.coachRead,
+    coachWrite: data.coachWrite
   }
 }
 

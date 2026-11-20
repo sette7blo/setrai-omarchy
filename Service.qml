@@ -19,6 +19,10 @@ Item {
   property var pluginSettings: Model.pluginSettings(null, Model.PLUGIN_ID)
   readonly property int pollSeconds: pluginSettings.pollSeconds
   readonly property bool coachEnabled: pluginSettings.coach === true
+  readonly property bool coachRead: pluginSettings.coachRead === true
+  readonly property bool coachWrite: pluginSettings.coachWrite === true
+  // The default agent the coach opens, as `setrai coach --check` reports it.
+  property string agentName: ""
 
   // Whether the coach can open an agent. Looked at only when the coach is
   // switched on in the settings, and then only as the panel opens.
@@ -286,9 +290,11 @@ Item {
   Process {
     id: agentCheckProc
     running: false
+    stdout: StdioCollector { id: agentCheckOut; waitForEnd: true }
     stderr: StdioCollector { id: agentCheckErr; waitForEnd: true }
     onExited: function(code) {
       root.agentReady = code === 0
+      root.agentName = code === 0 ? String(agentCheckOut.text || "").trim() : ""
       root.agentNote = code === 0 ? "" : (String(agentCheckErr.text || "").trim().split("\n")[0]
         || "The coach cannot open your default agent.")
     }
@@ -339,7 +345,10 @@ Item {
     onTriggered: {
       // A login shell, as the bar's own run() uses, so the agent sees the
       // same PATH it would from the popover.
-      coachProc.command = ["bash", "-lc", 'exec "$@"', "bash", root.pluginDir + "/bin/setrai", "coach"]
+      var args = ["bash", "-lc", 'exec "$@"', "bash", root.pluginDir + "/bin/setrai", "coach"]
+      if (root.coachRead) args.push("--allow-read")
+      if (root.coachWrite) args.push("--allow-write")
+      coachProc.command = args
       coachProc.running = true
     }
   }
