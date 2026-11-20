@@ -16,7 +16,7 @@ var DEFAULT_BASE_URL = "http://localhost:3000"
 // it into the connection file once.
 
 function defaultSettings() {
-  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "" }
+  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "", coach: false }
 }
 
 function clampPoll(value) {
@@ -37,7 +37,10 @@ function normalizeSettings(raw) {
   var data = raw && typeof raw === "object" ? raw : {}
   return {
     pollSeconds: clampPoll(data.pollSeconds),
-    legacyBaseUrl: normalizeBaseUrl(data.legacyBaseUrl !== undefined ? data.legacyBaseUrl : data.baseUrl)
+    legacyBaseUrl: normalizeBaseUrl(data.legacyBaseUrl !== undefined ? data.legacyBaseUrl : data.baseUrl),
+    // The coach is the one feature that involves an AI agent. It is off until
+    // the user turns it on in the settings.
+    coach: data.coach === true
   }
 }
 
@@ -73,7 +76,8 @@ function settingsPayload(settings) {
   var data = normalizeSettings(settings)
   return {
     id: PLUGIN_ID,
-    pollSeconds: data.pollSeconds
+    pollSeconds: data.pollSeconds,
+    coach: data.coach
   }
 }
 

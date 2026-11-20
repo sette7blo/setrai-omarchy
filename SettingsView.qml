@@ -198,4 +198,50 @@ Column {
       }
     }
   }
+
+  PanelSeparator { foreground: root.foreground }
+
+  // ---- Coach ----
+  Column {
+    width: parent.width
+    spacing: Style.spacing.lg
+
+    PanelSectionHeader {
+      text: "AI coach"
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+    }
+    Toggle {
+      width: parent.width
+      label: "Enable the coach"
+      description: "Off unless you turn it on."
+      checked: root.service ? root.service.coachEnabled : false
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: {
+        if (!root.service) return
+        root.service.persistSettings({ coach: !root.service.coachEnabled })
+      }
+    }
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      text: "The coach adds an Ask coach button that opens your own default Omarchy agent (claude, codex, cursor-agent or copilot) in a terminal, with Setrai docked beside it, and points it at your training data. It opens with the agent's normal permission prompts, so it asks before running commands. The plugin has no AI of its own and no AI key, and sends nothing anywhere itself. What the agent sends to its provider is between you and that agent."
+      color: root.dim
+      wrapMode: Text.WordWrap
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: !!root.service && root.service.coachEnabled && !root.service.agentReady && root.service.agentNote !== ""
+      text: root.service ? root.service.agentNote : ""
+      color: Color.urgent
+      wrapMode: Text.WordWrap
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+  }
 }

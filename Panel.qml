@@ -33,6 +33,7 @@ Panel {
   readonly property bool configured: service ? service.configured === true : false
   readonly property var openWorkout: service ? service.openWorkout : null
   readonly property bool hasResume: !!openWorkout
+  readonly property bool coachOn: service ? service.coachEnabled && service.agentReady === true : false
   readonly property bool hasReadiness: configured && !!service && service.readiness !== null
   readonly property string weightUnit: service ? service.weightUnit : "kg"
   // True while a text field has focus, so the panel leaves the keys to it.
@@ -97,7 +98,7 @@ Panel {
   // Docks Setrai on the left and opens the default Omarchy agent beside it;
   // the CLI reports if no agent is set.
   function askCoach() {
-    if (!root.service) return
+    if (!root.coachOn) return
     close()
     root.service.startCoach()
   }
@@ -379,6 +380,7 @@ Panel {
           onClicked: root.openSetrai("/")
         }
         Button {
+          visible: root.coachOn
           text: "Ask coach"
           bordered: true
           foreground: root.foreground

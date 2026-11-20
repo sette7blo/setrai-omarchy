@@ -18,6 +18,13 @@ Item {
   // --- Persistent settings (bar layout entry) ------------------------------
   property var pluginSettings: Model.pluginSettings(null, Model.PLUGIN_ID)
   readonly property int pollSeconds: pluginSettings.pollSeconds
+  readonly property bool coachEnabled: pluginSettings.coach === true
+
+  // Whether the coach can open an agent. Looked at only when the coach is
+  // switched on in the settings, and then only as the panel opens.
+  property bool agentReady: false
+  // Why the coach cannot open an agent, shown in the settings.
+  property string agentNote: ""
 
   // --- Connection (private state file, shared with bin/setrai) -------------
   property var connection: Model.emptyConnection()
@@ -263,7 +270,32 @@ Item {
     return null
   }
 
+  function checkAgent() {
+    if (!root.coachEnabled) {
+      root.agentReady = false
+      root.agentNote = ""
+      return
+    }
+    if (!root.panelOpen || agentCheckProc.running) return
+    agentCheckProc.command = ["bash", "-lc", 'exec "$@"', "bash", root.pluginDir + "/bin/setrai", "coach", "--check"]
+    agentCheckProc.running = true
+  }
+
+  onCoachEnabledChanged: root.checkAgent()
+
+  Process {
+    id: agentCheckProc
+    running: false
+    stderr: StdioCollector { id: agentCheckErr; waitForEnd: true }
+    onExited: function(code) {
+      root.agentReady = code === 0
+      root.agentNote = code === 0 ? "" : (String(agentCheckErr.text || "").trim().split("\n")[0]
+        || "The coach cannot open your default agent.")
+    }
+  }
+
   function startCoach() {
+    if (!root.coachEnabled) return
     var focused = Hyprland.focusedMonitor
     var known = []
     for (var i = 0; i < root.agentWindows.length; i++) known.push(root.agentWindows[i].address)
@@ -551,7 +583,10 @@ Item {
     if (root.configured && root.headerReady) root.forcePoll()
   }
 
-  onPanelOpenChanged: if (root.panelOpen) root.forcePoll()
+  onPanelOpenChanged: if (root.panelOpen) {
+    root.forcePoll()
+    root.checkAgent()
+  }
 
   Timer {
     interval: Math.max(Model.MIN_POLL_SECONDS,

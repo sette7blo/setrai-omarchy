@@ -14,6 +14,13 @@ project uses [Semantic Versioning](https://semver.org/).
   every 15 seconds so the coach's changes show up. It is shown only on the coach's
   workspace, and goes away when the coach terminal closes or with its close button.
 
+### Changed
+- The coach is off by default. Switch it on in Settings ("Enable the coach") to get the
+  Ask coach button back; `setrai coach` in a terminal works either way.
+- The coach opens the agent with its normal permission prompts. It used to go through
+  `omarchy-agent`, which switches them off. It now supports claude, codex, cursor-agent
+  and copilot; Settings and `setrai coach --check` say why it cannot open with any other.
+
 ## [v0.4.4] - 2026-11-18
 
 ### Fixed

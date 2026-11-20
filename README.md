@@ -83,8 +83,9 @@ From top to bottom:
   start the session and open it in its own window. While a session is open the button
   is **Resume workout** instead, and nothing new is started.
 - **Open Setrai**.
-- **Ask coach** docks Setrai on the left and opens your default Omarchy agent
-  beside it as a training coach (see [Coach](#coach)).
+- **Ask coach**, once the coach is switched on in Settings, docks Setrai on the
+  left and opens your default Omarchy agent beside it as a training coach (see
+  [Coach](#coach)).
 
 The plugin polls `GET /api/sessions`, `GET /api/recovery` and
 `GET /api/statistics` and `GET /api/profile` every 30 seconds by default (configurable), and when
@@ -126,12 +127,22 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 
 ### Coach
 
-"Ask coach" in the popover, or `setrai coach`, opens your default Omarchy
-agent (`omarchy default agent <name>`) in a terminal with a prompt that points
-it at these skills and starts with a weekly review. `setrai coach "<question>"`
-starts from your question instead. With no default agent set, it says so in a
-notification. Setrai has no AI of its own: your training data goes only to the agent
-you chose, and the agent asks before it writes anything.
+The coach is off until you turn it on: open the popover's Settings and switch
+on **Enable the coach**. That adds the "Ask coach" button. Typing `setrai coach`
+in a terminal works either way.
+
+"Ask coach", or `setrai coach`, opens your default Omarchy agent
+(`omarchy default agent <name>`) in a terminal with a prompt that points it at
+these skills and starts with a weekly review. `setrai coach "<question>"`
+starts from your question instead. The coach works with claude, codex,
+cursor-agent and copilot. Omarchy's own launcher starts agents with their
+permission prompts switched off; the coach starts the agent itself with its
+normal prompts left in place, so it asks before it runs commands, and the
+prompt tells it to ask before anything that writes to Setrai. If the coach
+cannot open (no default agent, or one it does not support), Settings says why
+and the button stays hidden; `setrai coach --check` prints the same reason.
+Setrai has no AI of its own: your training data goes only to the agent you
+chose.
 
 From the popover, Setrai docks on the left edge of the screen while the coach
 runs, and the terminal tiles into the space to its right. The dock shows
