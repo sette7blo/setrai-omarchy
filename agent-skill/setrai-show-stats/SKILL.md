@@ -7,12 +7,16 @@ description: Pull the user's Setrai training statistics overview — recent volu
 
 Fetch and present Setrai's overview dashboard as plain text.
 
-Endpoint: `GET <baseUrl>/api/statistics`
-Connection: read `baseUrl` and `apiKey` from
-`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
-Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
-them; the address defaults to `http://localhost:3000`. Send
-`Authorization: Bearer <apiKey>` on every request.
+Endpoint: `setrai-read /api/statistics`
+Connection: reach Setrai only through the plugin's two commands, never with
+curl and never by reading its credentials file. `setrai-read /api/<path>` sends
+a GET (add `--jq '<filter>'` to keep only the fields you need from a large
+answer, instead of processing the output with python or another program); `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). Both print the
+JSON response and use the server and key saved in the plugin's Settings. The
+coach prompt gives their full paths: call them by those paths. Outside the
+coach they are in the plugin's `bin` folder, two folders above this skill's
+real location.
 
 ## Response shape
 

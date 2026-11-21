@@ -71,6 +71,12 @@ Column {
     font.pixelSize: Style.font.bodySmall
   }
 
+  PanelSectionHeader {
+    text: "Connection"
+    foreground: root.foreground
+    fontFamily: root.fontFamily
+  }
+
   // ---- Server ----
   Column {
     width: parent.width
@@ -113,7 +119,7 @@ Column {
     Text {
       textFormat: Text.PlainText
       width: parent.width
-      text: "Create one in Setrai under Settings, API keys. It is shown only once."
+      text: "From Setrai, Settings, API keys. Shown only once."
       color: root.dim
       wrapMode: Text.WordWrap
       font.family: root.fontFamily
@@ -196,6 +202,79 @@ Column {
         root.save()
         root.closeSettings()
       }
+    }
+  }
+
+  PanelSeparator { foreground: root.foreground }
+
+  // ---- Coach ----
+  Column {
+    id: coachSection
+    width: parent.width
+    spacing: Style.spacing.md
+
+    readonly property bool on: !!root.service && root.service.coachEnabled
+
+    PanelSectionHeader {
+      text: "AI coach"
+      foreground: root.foreground
+      fontFamily: root.fontFamily
+    }
+    Toggle {
+      width: parent.width
+      label: "Ask coach"
+      description: "Your Omarchy agent, with Setrai docked beside it."
+      checked: coachSection.on
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: if (root.service) root.service.persistSettings({ coach: !root.service.coachEnabled })
+    }
+    // Pre-approvals: the coach starts with exactly these Setrai commands
+    // allowed, for that session only. Everything else still asks.
+    Toggle {
+      width: parent.width
+      visible: coachSection.on
+      label: "Read without asking"
+      description: "Stats, sessions, programs, recovery"
+      checked: root.service ? root.service.coachRead : false
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: if (root.service) root.service.persistSettings({ coachRead: !root.service.coachRead })
+    }
+    Toggle {
+      width: parent.width
+      visible: coachSection.on
+      label: "Change without asking"
+      description: "Programs, workouts, body weight"
+      checked: root.service ? root.service.coachWrite : false
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: if (root.service) root.service.persistSettings({ coachWrite: !root.service.coachWrite })
+    }
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: coachSection.on && root.service.agentReady
+      text: root.service && root.service.agentName === "codex"
+        ? "Codex cannot pre-approve commands, so it always asks."
+        : "Anything else the agent runs still asks. Setrai has no AI of its own."
+      color: root.dim
+      wrapMode: Text.WordWrap
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: coachSection.on && !root.service.agentReady && root.service.agentNote !== ""
+      text: root.service ? root.service.agentNote : ""
+      color: Color.urgent
+      wrapMode: Text.WordWrap
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
     }
   }
 }

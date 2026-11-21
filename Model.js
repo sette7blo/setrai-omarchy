@@ -16,7 +16,7 @@ var DEFAULT_BASE_URL = "http://localhost:3000"
 // it into the connection file once.
 
 function defaultSettings() {
-  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "" }
+  return { pollSeconds: DEFAULT_POLL_SECONDS, legacyBaseUrl: "", coach: false, coachRead: false, coachWrite: false }
 }
 
 function clampPoll(value) {
@@ -37,7 +37,13 @@ function normalizeSettings(raw) {
   var data = raw && typeof raw === "object" ? raw : {}
   return {
     pollSeconds: clampPoll(data.pollSeconds),
-    legacyBaseUrl: normalizeBaseUrl(data.legacyBaseUrl !== undefined ? data.legacyBaseUrl : data.baseUrl)
+    legacyBaseUrl: normalizeBaseUrl(data.legacyBaseUrl !== undefined ? data.legacyBaseUrl : data.baseUrl),
+    // The coach is the one feature that involves an AI agent. It is off until
+    // the user turns it on in the settings.
+    coach: data.coach === true,
+    // Pre-approvals for the coach's Setrai commands, also off until chosen.
+    coachRead: data.coachRead === true,
+    coachWrite: data.coachWrite === true
   }
 }
 
@@ -73,7 +79,10 @@ function settingsPayload(settings) {
   var data = normalizeSettings(settings)
   return {
     id: PLUGIN_ID,
-    pollSeconds: data.pollSeconds
+    pollSeconds: data.pollSeconds,
+    coach: data.coach,
+    coachRead: data.coachRead,
+    coachWrite: data.coachWrite
   }
 }
 
@@ -251,8 +260,33 @@ function parseStatistics(text) {
     weeklyVolume: weekly,
     sessionsThisWeek: finiteOrNull(freq.thisWeek) || 0,
     bodyWeight: body,
-    bodyWeightChangeKg: finiteOrNull(stats.bodyWeightChangeKg)
+    bodyWeightChangeKg: finiteOrNull(stats.bodyWeightChangeKg),
+    streak: parseStreak(stats.trainingStreak)
   }
+}
+
+// Same rule as the web app's Today page: the day streak when the server
+// reports one, otherwise the week streak.
+function parseStreak(raw) {
+  var s = raw && typeof raw === "object" ? raw : {}
+  var days = finiteOrNull(s.currentStreakDays)
+  if (days !== null) return { value: days, unit: "day" }
+  var weeks = finiteOrNull(s.currentStreakWeeks)
+  return weeks !== null ? { value: weeks, unit: "week" } : null
+}
+
+// Finished sessions, newest first: [{ id, programName, finishedAt }].
+function recentSessions(sessions, limit) {
+  var list = Array.isArray(sessions) ? sessions : []
+  var out = []
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i]
+    var t = parseTimestamp(s && s.finishedAt)
+    if (!t) continue
+    out.push({ id: s.id, programName: String(s.programName || "Workout"), finishedAt: t.toISOString() })
+  }
+  out.sort(function(a, b) { return a.finishedAt < b.finishedAt ? 1 : a.finishedAt > b.finishedAt ? -1 : 0 })
+  return out.slice(0, Math.max(0, Number(limit) || 0))
 }
 
 // GET /api/programs -> { programs: [{ id, name, ... }] }, in the server's
@@ -427,6 +461,12 @@ function formatSessions(count) {
   return n + (n === 1 ? " session" : " sessions")
 }
 
+function formatStreak(streak) {
+  if (!streak) return ""
+  var n = Number(streak.value) || 0
+  return n + " " + streak.unit + (n === 1 ? "" : "s")
+}
+
 function relativeDay(iso, now) {
   var t = parseTimestamp(iso)
   if (!t) return ""
@@ -489,6 +529,9 @@ if (typeof module !== "undefined" && module.exports) {
     parseErrorMessage: parseErrorMessage,
     formatReadinessPct: formatReadinessPct,
     formatSessions: formatSessions,
+    parseStreak: parseStreak,
+    recentSessions: recentSessions,
+    formatStreak: formatStreak,
     relativeDay: relativeDay
   }
 }

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import "Model.js" as Model
 
 // Background service: polls Setrai's REST API with an API key and exposes
@@ -17,6 +18,17 @@ Item {
   // --- Persistent settings (bar layout entry) ------------------------------
   property var pluginSettings: Model.pluginSettings(null, Model.PLUGIN_ID)
   readonly property int pollSeconds: pluginSettings.pollSeconds
+  readonly property bool coachEnabled: pluginSettings.coach === true
+  readonly property bool coachRead: pluginSettings.coachRead === true
+  readonly property bool coachWrite: pluginSettings.coachWrite === true
+  // The default agent the coach opens, as `setrai coach --check` reports it.
+  property string agentName: ""
+
+  // Whether the coach can open an agent. Looked at only when the coach is
+  // switched on in the settings, and then only as the panel opens.
+  property bool agentReady: false
+  // Why the coach cannot open an agent, shown in the settings.
+  property string agentNote: ""
 
   // --- Connection (private state file, shared with bin/setrai) -------------
   property var connection: Model.emptyConnection()
@@ -51,6 +63,54 @@ Item {
   readonly property real weekVolumeKg: Model.currentWeekVolume(statistics.weeklyVolume, new Date())
   readonly property var bodyEntries: statistics.bodyWeight
   readonly property var bodyChangeKg: statistics.bodyWeightChangeKg
+  readonly property var streak: statistics.streak
+  readonly property var recentSessions: Model.recentSessions(sessions, 6)
+
+  // --- Coach dock ------------------------------------------------------------
+  // "Ask coach" docks Setrai on the left edge and opens the agent terminal,
+  // which Hyprland tiles into the space left over. The terminal is detached,
+  // so it is followed by its window: omarchy-agent gives every agent window
+  // the app-id below, and the coach's is the first one that was not open
+  // before the launch.
+  readonly property string pluginDir: home + "/.config/omarchy/plugins/" + Model.PLUGIN_ID
+  readonly property string agentAppId: "org.omarchy.agent"
+  readonly property int dockPollSeconds: 15
+  property bool coachDocked: false
+  property string coachMonitorName: ""
+  property string coachAddress: ""
+  property var coachKnownAddresses: []
+  // Set when the coach is closed before its terminal has appeared, so the
+  // terminal is closed as soon as it does.
+  property bool coachClosePending: false
+
+  readonly property var agentWindows: {
+    var out = []
+    var list = Hyprland.toplevels ? Hyprland.toplevels.values : []
+    for (var i = 0; i < list.length; i++) {
+      var w = list[i].wayland
+      if (w && w.appId === root.agentAppId) out.push(list[i])
+    }
+    return out
+  }
+  readonly property var coachWindow: {
+    for (var i = 0; i < agentWindows.length; i++) {
+      if (agentWindows[i].address === root.coachAddress) return agentWindows[i]
+    }
+    return null
+  }
+  readonly property var coachWorkspace: coachWindow ? coachWindow.workspace : null
+  readonly property var coachMonitor: coachWorkspace && coachWorkspace.monitor
+    ? coachWorkspace.monitor : root.monitorNamed(root.coachMonitorName)
+  readonly property var coachScreen: root.screenNamed(coachMonitor ? coachMonitor.name : root.coachMonitorName)
+  // Before the terminal maps, the dock is up so the terminal tiles beside it.
+  // After that it follows the coach's workspace, and stays up when Hyprland
+  // has not reported where that is.
+  readonly property bool coachDockShown: {
+    if (!coachDocked || !coachScreen) return false
+    if (!coachWindow || !coachWorkspace || !coachWorkspace.monitor) return true
+    var active = coachWorkspace.monitor.activeWorkspace
+    return !active || active.id === coachWorkspace.id
+  }
 
   // --- Settings test-connection result (SettingsView listens) --------------
   signal connectionProbed(bool ok, string message, var info)
@@ -156,6 +216,7 @@ Item {
     enqueueRequest("recovery")
     enqueueRequest("statistics")
     enqueueRequest("profile")
+    if (root.coachDocked) enqueueRequest("programs")
   }
 
   function pump() {
@@ -197,6 +258,177 @@ Item {
     if (!root.reqQueue.length) {
       root.status = "ok"
       root.statusDetail = ""
+    }
+  }
+
+  function screenNamed(name) {
+    var screens = Quickshell.screens
+    for (var i = 0; i < screens.length; i++) {
+      if (screens[i].name === name) return screens[i]
+    }
+    return null
+  }
+
+  function monitorNamed(name) {
+    var monitors = Hyprland.monitors ? Hyprland.monitors.values : []
+    for (var i = 0; i < monitors.length; i++) {
+      if (monitors[i].name === name) return monitors[i]
+    }
+    return null
+  }
+
+  function checkAgent() {
+    if (!root.coachEnabled) {
+      root.agentReady = false
+      root.agentNote = ""
+      return
+    }
+    if (!root.panelOpen || agentCheckProc.running) return
+    agentCheckProc.command = ["bash", "-lc", 'exec "$@"', "bash", root.pluginDir + "/bin/setrai", "coach", "--check"]
+    agentCheckProc.running = true
+  }
+
+  onCoachEnabledChanged: root.checkAgent()
+
+  Process {
+    id: agentCheckProc
+    running: false
+    stdout: StdioCollector { id: agentCheckOut; waitForEnd: true }
+    stderr: StdioCollector { id: agentCheckErr; waitForEnd: true }
+    onExited: function(code) {
+      root.agentReady = code === 0
+      root.agentName = code === 0 ? String(agentCheckOut.text || "").trim() : ""
+      root.agentNote = code === 0 ? "" : (String(agentCheckErr.text || "").trim().split("\n")[0]
+        || "The coach cannot open your default agent.")
+    }
+  }
+
+  // Hyprland wants 0x-prefixed addresses; Quickshell reports them without.
+  function hyprAddress(address) {
+    var a = String(address || "")
+    if (a.indexOf("0x") !== 0) a = "0x" + a
+    return /^0x[0-9a-f]+$/i.test(a) ? a : ""
+  }
+
+  // The coach and its dock are one unit: it opens on the first empty
+  // workspace of the focused monitor (Omarchy gives each monitor slots 1-10),
+  // and a second Ask coach goes back to the one already open. With every slot
+  // taken it opens where you are.
+  function startCoach() {
+    if (!root.coachEnabled) return
+    if (root.coachDocked && root.coachWindow) {
+      var open = root.hyprAddress(root.coachWindow.address)
+      if (open) Hyprland.dispatch('hl.dsp.focus({window = hl.get_window("address:' + open + '")})')
+      return
+    }
+    Hyprland.dispatch("function() local m = hl.get_active_monitor() if not m then return end "
+      + "for s = 1, 10 do local ws = hl.get_workspace(o.workspaces.workspace_id(m, s)) "
+      + "if not ws or (ws.windows or 0) == 0 then o.workspaces.focus(s)() return end end end")
+    root.coachClosePending = false
+    var focused = Hyprland.focusedMonitor
+    var known = []
+    for (var i = 0; i < root.agentWindows.length; i++) known.push(root.agentWindows[i].address)
+    root.coachKnownAddresses = known
+    root.coachAddress = ""
+    root.coachMonitorName = focused ? focused.name : (Quickshell.screens.length ? Quickshell.screens[0].name : "")
+    root.coachDocked = true
+    root.forcePoll()
+    // Give the dock a moment to reserve its edge before the terminal maps.
+    coachLaunchTimer.restart()
+    coachWaitTimer.restart()
+  }
+
+  function closeCoachDock() {
+    coachLaunchTimer.stop()
+    coachWaitTimer.stop()
+    root.coachDocked = false
+    root.coachAddress = ""
+    if (!root.coachClosePending) root.coachKnownAddresses = []
+  }
+
+  // Closing the dock closes the coach's terminal too. If the terminal is
+  // still on its way, it is closed when it appears.
+  function closeCoach() {
+    var address = root.coachWindow ? root.hyprAddress(root.coachWindow.address) : ""
+    if (address) {
+      Hyprland.dispatch('hl.dsp.window.close({ window = "address:' + address + '" })')
+    } else if (root.coachDocked && !coachLaunchTimer.running) {
+      root.coachClosePending = true
+      coachPendingTimer.restart()
+    }
+    root.closeCoachDock()
+  }
+
+  onAgentWindowsChanged: {
+    if (root.coachClosePending) {
+      for (var j = 0; j < root.agentWindows.length; j++) {
+        var late = root.agentWindows[j].address
+        if (root.coachKnownAddresses.indexOf(late) >= 0) continue
+        var hex = root.hyprAddress(late)
+        if (hex) Hyprland.dispatch('hl.dsp.window.close({ window = "address:' + hex + '" })')
+        root.coachClosePending = false
+        coachPendingTimer.stop()
+        root.coachKnownAddresses = []
+        return
+      }
+    }
+    if (!root.coachDocked || coachLaunchTimer.running) return
+    if (!root.coachAddress) {
+      for (var i = 0; i < root.agentWindows.length; i++) {
+        var address = root.agentWindows[i].address
+        if (root.coachKnownAddresses.indexOf(address) < 0) {
+          root.coachAddress = address
+          coachWaitTimer.stop()
+          return
+        }
+      }
+    } else if (!root.coachWindow) {
+      root.closeCoachDock()
+    }
+  }
+
+  Timer {
+    id: coachLaunchTimer
+    interval: 200
+    onTriggered: {
+      // A login shell, as the bar's own run() uses, so the agent sees the
+      // same PATH it would from the popover.
+      var args = ["bash", "-lc", 'exec "$@"', "bash", root.pluginDir + "/bin/setrai", "coach"]
+      if (root.coachRead) args.push("--allow-read")
+      if (root.coachWrite) args.push("--allow-write")
+      coachProc.command = args
+      coachProc.running = true
+    }
+  }
+
+  // The coach reports its own errors (no default agent and so on); either
+  // way, a dock with no terminal beside it goes away.
+  Timer {
+    id: coachWaitTimer
+    interval: 20000
+    onTriggered: if (!root.coachAddress) root.closeCoachDock()
+  }
+
+  // A terminal that never appears does not keep a close waiting forever.
+  Timer {
+    id: coachPendingTimer
+    interval: 20000
+    onTriggered: {
+      root.coachClosePending = false
+      root.coachKnownAddresses = []
+    }
+  }
+
+  Process {
+    id: coachProc
+    running: false
+    onExited: function(code) { if (code !== 0) root.closeCoachDock() }
+  }
+
+  LazyLoader {
+    active: root.coachDocked
+    CoachDock {
+      service: root
     }
   }
 
@@ -418,10 +650,14 @@ Item {
     if (root.configured && root.headerReady) root.forcePoll()
   }
 
-  onPanelOpenChanged: if (root.panelOpen) root.forcePoll()
+  onPanelOpenChanged: if (root.panelOpen) {
+    root.forcePoll()
+    root.checkAgent()
+  }
 
   Timer {
-    interval: Math.max(Model.MIN_POLL_SECONDS, root.pollSeconds) * 1000
+    interval: Math.max(Model.MIN_POLL_SECONDS,
+      root.coachDocked ? Math.min(root.pollSeconds, root.dockPollSeconds) : root.pollSeconds) * 1000
     running: root.configured && root.headerReady
     repeat: true
     onTriggered: root.forcePoll()

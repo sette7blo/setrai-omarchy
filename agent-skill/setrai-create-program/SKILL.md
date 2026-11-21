@@ -9,11 +9,15 @@ Use this when the user wants a **new saved program**: a named list of
 exercises with sets, reps and rest that they can start again and again. For a
 one-off session for today, use `setrai-quick-workout` instead.
 
-Connection: read `baseUrl` and `apiKey` from
-`~/.local/state/omarchy/setrai/credentials.json` (written by the plugin's
-Settings view). `SETRAI_URL` and `SETRAI_API_KEY` in the environment override
-them; the address defaults to `http://localhost:3000`. Send
-`Authorization: Bearer <apiKey>` on every request.
+Connection: reach Setrai only through the plugin's two commands, never with
+curl and never by reading its credentials file. `setrai-read /api/<path>` sends
+a GET (add `--jq '<filter>'` to keep only the fields you need from a large
+answer, instead of processing the output with python or another program); `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). Both print the
+JSON response and use the server and key saved in the plugin's Settings. The
+coach prompt gives their full paths: call them by those paths. Outside the
+coach they are in the plugin's `bin` folder, two folders above this skill's
+real location.
 
 A Setrai program is **one workout**. A weekly split is several programs
 ("Upper A", "Lower A", ...): create one per training day.
@@ -22,16 +26,16 @@ A Setrai program is **one workout**. A weekly split is several programs
 
 1. **Understand the request.** If the user did not say, ask for what you need
    and no more: the goal, how many days a week, how long a session, and any
-   exercise or body part to avoid. `GET <baseUrl>/api/profile` gives
+   exercise or body part to avoid. `setrai-read /api/profile` gives
    `trainingGoal` (`strength`, `hypertrophy`, `general-fitness`, `endurance`)
    and `equipment`; use them as defaults instead of asking.
-2. **Load the exercise library.** `GET <baseUrl>/api/exercises` →
+2. **Load the exercise library.** `setrai-read /api/exercises` →
    `{ exercises: [{ id, slug, name, muscle_group, muscles, equipment,
    movement_type, difficulty, default_sets, default_reps, default_rest }] }`.
    `?search=<text>` narrows it by name. Only use exercises from this list, and
    only ones whose `equipment` the user has. Never invent an exercise; if the
    library lacks something, say so and pick the closest one it does have.
-3. **Check what they already have.** `GET <baseUrl>/api/programs` → avoid a
+3. **Check what they already have.** `setrai-read /api/programs` → avoid a
    duplicate name, and point out an existing program that already covers it.
 4. **Draft the program** and show it in full before saving:
 
@@ -42,7 +46,7 @@ A Setrai program is **one workout**. A weekly split is several programs
      ...
    Save this to Setrai?
    ```
-5. **Save on an explicit yes.** `POST <baseUrl>/api/programs`:
+5. **Save on an explicit yes.** `setrai-write POST /api/programs`:
 
    ```json
    {
@@ -81,7 +85,7 @@ Setrai's own use.
 
 ## Changing a program
 
-`PATCH <baseUrl>/api/programs/<id>` takes the same fields. Sending `exercises`
+`setrai-write PATCH /api/programs/<id>` takes the same fields. Sending `exercises`
 replaces the whole list, so send every exercise, not only the changed ones.
 Confirm before patching. Do not delete programs unless the user asks for that
 program to be deleted.
@@ -100,3 +104,8 @@ program to be deleted.
 Show the complete program and wait for an explicit "yes" before any POST or
 PATCH. For a multi-day split, show every day first and save them together
 after one confirmation.
+
+If the coach prompt says Setrai changes are pre-approved, a program you
+designed is still shown first, but a change the user asked for in plain words
+("save it", "swap rows for pull-ups in Upper A") needs no extra confirmation:
+make it, then say what changed.
