@@ -106,10 +106,10 @@ PanelWindow {
           trailingControl: Component {
             PanelActionButton {
               iconText: "\u{f0156}"
-              tooltipText: "Undock"
+              tooltipText: "Close coach"
               foreground: root.foreground
               fontFamily: root.fontFamily
-              onClicked: root.service.closeCoachDock()
+              onClicked: root.service.closeCoach()
             }
           }
         }

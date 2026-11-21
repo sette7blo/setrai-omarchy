@@ -71,6 +71,12 @@ Column {
     font.pixelSize: Style.font.bodySmall
   }
 
+  PanelSectionHeader {
+    text: "Connection"
+    foreground: root.foreground
+    fontFamily: root.fontFamily
+  }
+
   // ---- Server ----
   Column {
     width: parent.width
@@ -113,7 +119,7 @@ Column {
     Text {
       textFormat: Text.PlainText
       width: parent.width
-      text: "Create one in Setrai under Settings, API keys. It is shown only once."
+      text: "From Setrai, Settings, API keys. Shown only once."
       color: root.dim
       wrapMode: Text.WordWrap
       font.family: root.fontFamily
@@ -203,8 +209,11 @@ Column {
 
   // ---- Coach ----
   Column {
+    id: coachSection
     width: parent.width
-    spacing: Style.spacing.lg
+    spacing: Style.spacing.md
+
+    readonly property bool on: !!root.service && root.service.coachEnabled
 
     PanelSectionHeader {
       text: "AI coach"
@@ -213,33 +222,21 @@ Column {
     }
     Toggle {
       width: parent.width
-      label: "Enable the coach"
-      description: "Off unless you turn it on."
-      checked: root.service ? root.service.coachEnabled : false
+      label: "Ask coach"
+      description: "Your Omarchy agent, with Setrai docked beside it."
+      checked: coachSection.on
       foreground: root.foreground
       accent: root.accent
       fontFamily: root.fontFamily
-      onClicked: {
-        if (!root.service) return
-        root.service.persistSettings({ coach: !root.service.coachEnabled })
-      }
-    }
-    Text {
-      textFormat: Text.PlainText
-      width: parent.width
-      text: "The coach adds an Ask coach button that opens your own default Omarchy agent (claude, codex, cursor-agent or copilot) in a terminal, with Setrai docked beside it, and points it at your training data. It opens with the agent's normal permission prompts, so it asks before running commands. The plugin has no AI of its own and no AI key, and sends nothing anywhere itself. What the agent sends to its provider is between you and that agent."
-      color: root.dim
-      wrapMode: Text.WordWrap
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.caption
+      onClicked: if (root.service) root.service.persistSettings({ coach: !root.service.coachEnabled })
     }
     // Pre-approvals: the coach starts with exactly these Setrai commands
     // allowed, for that session only. Everything else still asks.
     Toggle {
       width: parent.width
-      visible: !!root.service && root.service.coachEnabled
-      label: "Read Setrai without asking"
-      description: "Stats, sessions, programs, recovery and your profile."
+      visible: coachSection.on
+      label: "Read without asking"
+      description: "Stats, sessions, programs, recovery"
       checked: root.service ? root.service.coachRead : false
       foreground: root.foreground
       accent: root.accent
@@ -248,9 +245,9 @@ Column {
     }
     Toggle {
       width: parent.width
-      visible: !!root.service && root.service.coachEnabled
-      label: "Change Setrai without asking"
-      description: "Saving or changing programs, starting workouts, logging weight. A program the coach designs is still shown before it is saved."
+      visible: coachSection.on
+      label: "Change without asking"
+      description: "Programs, workouts, body weight"
       checked: root.service ? root.service.coachWrite : false
       foreground: root.foreground
       accent: root.accent
@@ -260,10 +257,10 @@ Column {
     Text {
       textFormat: Text.PlainText
       width: parent.width
-      visible: !!root.service && root.service.coachEnabled && (root.service.coachRead || root.service.coachWrite)
+      visible: coachSection.on && root.service.agentReady
       text: root.service && root.service.agentName === "codex"
-        ? "Codex has no per-command approval, so it still asks every time."
-        : "Only the plugin's own Setrai commands are allowed, for the coach's session only. Anything else the agent wants to run still asks. Applies the next time you ask the coach."
+        ? "Codex cannot pre-approve commands, so it always asks."
+        : "Anything else the agent runs still asks. Setrai has no AI of its own."
       color: root.dim
       wrapMode: Text.WordWrap
       font.family: root.fontFamily
@@ -272,7 +269,7 @@ Column {
     Text {
       textFormat: Text.PlainText
       width: parent.width
-      visible: !!root.service && root.service.coachEnabled && !root.service.agentReady && root.service.agentNote !== ""
+      visible: coachSection.on && !root.service.agentReady && root.service.agentNote !== ""
       text: root.service ? root.service.agentNote : ""
       color: Color.urgent
       wrapMode: Text.WordWrap

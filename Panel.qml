@@ -106,7 +106,7 @@ Panel {
   Component {
     id: settingsComp
     SettingsView {
-      width: body.width
+      width: settingsScroller.width
       service: root.service
       foreground: root.foreground
       accent: root.accent
@@ -121,7 +121,7 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
-    contentWidth: panel.fittedContentWidth(Style.space(300))
+    contentWidth: panel.fittedContentWidth(Style.space(root.showSettings ? 420 : 300))
     contentHeight: panel.fittedContentHeight(body.implicitHeight, Style.space(640))
 
     PanelKeyCatcher {
@@ -138,6 +138,7 @@ Panel {
       spacing: Style.spacing.xxl
 
       PanelHero {
+        id: hero
         title: "Setrai"
         meta: root.heroMeta
         foreground: root.foreground
@@ -163,14 +164,32 @@ Panel {
         }
       }
 
-      PanelSeparator { foreground: root.foreground }
+      PanelSeparator { id: heroSeparator; foreground: root.foreground }
 
-      Loader {
-        id: settingsLoader
+      // Settings scroll inside whatever height the panel has left below the
+      // header, so the coach switches stay reachable.
+      Flickable {
+        id: settingsScroller
         width: parent.width
-        active: root.showSettings
-        visible: active
-        sourceComponent: settingsComp
+        readonly property real panelCap: Math.min(Style.space(640),
+          panel.availableCardHeight > 0 ? panel.availableCardHeight - panel.verticalContentInset : Style.space(640))
+        height: Math.max(0, Math.min(contentHeight,
+          panelCap - hero.height - heroSeparator.height - body.spacing * 2))
+        visible: root.showSettings
+        contentWidth: width
+        contentHeight: settingsLoader.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
+        interactive: contentHeight > height
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+        Loader {
+          id: settingsLoader
+          width: settingsScroller.width
+          active: root.showSettings
+          sourceComponent: settingsComp
+        }
       }
 
       // ---- Connection notice ----

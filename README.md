@@ -128,7 +128,7 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 ### Coach
 
 The coach is off until you turn it on: open the popover's Settings and switch
-on **Enable the coach**. That adds the "Ask coach" button. Typing `setrai coach`
+on **Ask coach**. That adds the "Ask coach" button. Typing `setrai coach`
 in a terminal works either way.
 
 "Ask coach", or `setrai coach`, opens your default Omarchy agent
@@ -145,16 +145,18 @@ Setrai has no AI of its own: your training data goes only to the agent you
 chose.
 
 The skills reach Setrai only through two commands in the plugin's `bin`
-folder: `setrai-read /api/<path>` (GET) and
+folder: `setrai-read /api/<path> [--jq '<filter>']` (GET) and
 `setrai-write <METHOD> /api/<path> '<json>'` (POST, PUT, PATCH, DELETE). They
 take only `/api/` paths, use the address and key saved in Settings (never an
 environment override), and pass the key to curl on stdin, so the agent never
-sees it. Because every Setrai call is one of these two commands, the coach can
+sees it. `--jq` picks fields from a large answer, so the coach does not need to
+run python or jq itself, which would each ask for approval; the filter runs with
+an empty environment and may not import files. Because every Setrai call is one of these two commands, the coach can
 pre-approve them. With the coach on, Settings has two more switches, both off
 by default:
 
-- **Read Setrai without asking**: `setrai-read` runs without a prompt.
-- **Change Setrai without asking**: `setrai-write` and `setrai start`/`open`
+- **Read without asking**: `setrai-read` runs without a prompt.
+- **Change without asking**: `setrai-write` and `setrai start`/`open`
   run without a prompt, and the coach makes a change you asked for without
   asking you to confirm it. A program it designed is still shown before it is
   saved.
@@ -166,14 +168,15 @@ copilot `--allow-tool`, and cursor-agent an allow list in
 starts in. Your own agent settings are not touched. Codex has no per-command
 approval, so with codex the coach still asks.
 
-From the popover, Setrai docks on the left edge of the screen while the coach
-runs, and the terminal tiles into the space to its right. The dock shows
+From the popover, the coach opens on the first empty workspace of the screen
+you are on, with Setrai docked on its left edge and the terminal tiled into the
+space to its right. Asking again while it is open takes you back to it. The dock shows
 readiness, this week's sessions, volume and streak, the body weight chart,
 recent sessions and saved programs, and refreshes every 15 seconds, so a
 program the coach saves or a weight it logs appears there. It has no buttons
 of its own: ask the coach, or use the popover. The dock is shown only on the
-coach's workspace and goes away when you close the coach terminal, or with
-its close button, which leaves the terminal open. `setrai coach` from a
+coach's workspace. The two close together: closing the terminal removes the
+dock, and the dock's close button closes the terminal. `setrai coach` from a
 terminal opens the agent without the dock.
 
 The skills read the same connection file, so they use whatever address and

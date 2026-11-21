@@ -79,6 +79,9 @@ Item {
   property string coachMonitorName: ""
   property string coachAddress: ""
   property var coachKnownAddresses: []
+  // Set when the coach is closed before its terminal has appeared, so the
+  // terminal is closed as soon as it does.
+  property bool coachClosePending: false
 
   readonly property var agentWindows: {
     var out = []
@@ -300,8 +303,28 @@ Item {
     }
   }
 
+  // Hyprland wants 0x-prefixed addresses; Quickshell reports them without.
+  function hyprAddress(address) {
+    var a = String(address || "")
+    if (a.indexOf("0x") !== 0) a = "0x" + a
+    return /^0x[0-9a-f]+$/i.test(a) ? a : ""
+  }
+
+  // The coach and its dock are one unit: it opens on the first empty
+  // workspace of the focused monitor (Omarchy gives each monitor slots 1-10),
+  // and a second Ask coach goes back to the one already open. With every slot
+  // taken it opens where you are.
   function startCoach() {
     if (!root.coachEnabled) return
+    if (root.coachDocked && root.coachWindow) {
+      var open = root.hyprAddress(root.coachWindow.address)
+      if (open) Hyprland.dispatch('hl.dsp.focus({window = hl.get_window("address:' + open + '")})')
+      return
+    }
+    Hyprland.dispatch("function() local m = hl.get_active_monitor() if not m then return end "
+      + "for s = 1, 10 do local ws = hl.get_workspace(o.workspaces.workspace_id(m, s)) "
+      + "if not ws or (ws.windows or 0) == 0 then o.workspaces.focus(s)() return end end end")
+    root.coachClosePending = false
     var focused = Hyprland.focusedMonitor
     var known = []
     for (var i = 0; i < root.agentWindows.length; i++) known.push(root.agentWindows[i].address)
@@ -320,10 +343,35 @@ Item {
     coachWaitTimer.stop()
     root.coachDocked = false
     root.coachAddress = ""
-    root.coachKnownAddresses = []
+    if (!root.coachClosePending) root.coachKnownAddresses = []
+  }
+
+  // Closing the dock closes the coach's terminal too. If the terminal is
+  // still on its way, it is closed when it appears.
+  function closeCoach() {
+    var address = root.coachWindow ? root.hyprAddress(root.coachWindow.address) : ""
+    if (address) {
+      Hyprland.dispatch('hl.dsp.window.close({ window = "address:' + address + '" })')
+    } else if (root.coachDocked && !coachLaunchTimer.running) {
+      root.coachClosePending = true
+      coachPendingTimer.restart()
+    }
+    root.closeCoachDock()
   }
 
   onAgentWindowsChanged: {
+    if (root.coachClosePending) {
+      for (var j = 0; j < root.agentWindows.length; j++) {
+        var late = root.agentWindows[j].address
+        if (root.coachKnownAddresses.indexOf(late) >= 0) continue
+        var hex = root.hyprAddress(late)
+        if (hex) Hyprland.dispatch('hl.dsp.window.close({ window = "address:' + hex + '" })')
+        root.coachClosePending = false
+        coachPendingTimer.stop()
+        root.coachKnownAddresses = []
+        return
+      }
+    }
     if (!root.coachDocked || coachLaunchTimer.running) return
     if (!root.coachAddress) {
       for (var i = 0; i < root.agentWindows.length; i++) {
@@ -359,6 +407,16 @@ Item {
     id: coachWaitTimer
     interval: 20000
     onTriggered: if (!root.coachAddress) root.closeCoachDock()
+  }
+
+  // A terminal that never appears does not keep a close waiting forever.
+  Timer {
+    id: coachPendingTimer
+    interval: 20000
+    onTriggered: {
+      root.coachClosePending = false
+      root.coachKnownAddresses = []
+    }
   }
 
   Process {
