@@ -247,7 +247,7 @@ Column {
       width: parent.width
       visible: coachSection.on
       label: "Change without asking"
-      description: "Programs, workouts, body weight"
+      description: "Programs, workouts, body weight, images"
       checked: root.service ? root.service.coachWrite : false
       foreground: root.foreground
       accent: root.accent

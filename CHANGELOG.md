@@ -6,6 +6,17 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `setrai-upload <exercise-id> <image-file>` uploads a JPEG, PNG, WebP or GIF of up to
+  10 MB and sets it as the exercise's picture, so the coach can attach an image it made.
+  It checks the file's first bytes, refuses SVG, and checks the exercise exists before
+  uploading. "Change without asking" pre-approves it along with `setrai-write`.
+  Needs Setrai v0.8.3 or later; older servers fail every image upload.
+
+### Changed
+- Requests to Setrai ignore `~/.curlrc`, so a curl config cannot add redirects or
+  another host to a request that carries the API key.
+
 ## [v0.5.0] - 2026-11-21
 
 ### Added

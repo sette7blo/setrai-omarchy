@@ -144,19 +144,21 @@ and the button stays hidden; `setrai coach --check` prints the same reason.
 Setrai has no AI of its own: your training data goes only to the agent you
 chose.
 
-The skills reach Setrai only through two commands in the plugin's `bin`
-folder: `setrai-read /api/<path> [--jq '<filter>']` (GET) and
-`setrai-write <METHOD> /api/<path> '<json>'` (POST, PUT, PATCH, DELETE). They
-take only `/api/` paths, use the address and key saved in Settings (never an
+The skills reach Setrai only through three commands in the plugin's `bin`
+folder: `setrai-read /api/<path> [--jq '<filter>']` (GET),
+`setrai-write <METHOD> /api/<path> '<json>'` (POST, PUT, PATCH, DELETE) and
+`setrai-upload <exercise-id> <image-file>`, which attaches a JPEG, PNG, WebP or
+GIF of up to 10 MB to an exercise (SVG is refused, since it can carry scripts).
+They take only `/api/` paths, use the address and key saved in Settings (never an
 environment override), and pass the key to curl on stdin, so the agent never
 sees it. `--jq` picks fields from a large answer, so the coach does not need to
 run python or jq itself, which would each ask for approval; the filter runs with
-an empty environment and may not import files. Because every Setrai call is one of these two commands, the coach can
-pre-approve them. With the coach on, Settings has two more switches, both off
+an empty environment and may not import files. Because every Setrai call is
+one of these commands, the coach can pre-approve them. With the coach on, Settings has two more switches, both off
 by default:
 
 - **Read without asking**: `setrai-read` runs without a prompt.
-- **Change without asking**: `setrai-write` and `setrai start`/`open`
+- **Change without asking**: `setrai-write`, `setrai-upload` and `setrai start`/`open`
   run without a prompt, and the coach makes a change you asked for without
   asking you to confirm it. A program it designed is still shown before it is
   saved.
@@ -216,7 +218,8 @@ BodyChart.qml              Latest body weight, total change, trend line, entry f
 SettingsView.qml           Server address, API key and refresh form
 Model.js                   Pure-JS helpers (parsing and formatting only)
 bin/setrai                 CLI wrapper used by the popover + desktop entry
-bin/setrai-read / -write   The only way the skills reach the Setrai API
+bin/setrai-read / -write / -upload
+                           The only way the skills reach the Setrai API
 bin/setrai-open.sh         URL opener the Panel shells out to (calls bin/setrai)
 setrai.desktop.in          Launcher template (install.sh fills in the CLI path)
 hooks/post-boot.sh         Optional Docker-stack autostart

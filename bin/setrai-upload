@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Uploads one JPEG, PNG, WebP or GIF image to the Setrai server saved in the
+# plugin's Settings and sets it as the given exercise's picture.
+# Usage: setrai-upload <exercise-id> <image-file>
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/setrai" api-upload "$@"

@@ -8,11 +8,13 @@ description: Generate a Setrai "quick workout" that respects muscle recovery, th
 Two-step: **generate** a workout plan from the user's constraints, then
 **start** it as a live session if they want to do it right now.
 
-Connection: reach Setrai only through the plugin's two commands, never with
+Connection: reach Setrai only through the plugin's three commands, never with
 curl and never by reading its credentials file. `setrai-read /api/<path>` sends
 a GET (add `--jq '<filter>'` to keep only the fields you need from a large
-answer, instead of processing the output with python or another program); `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
-PATCH or DELETE with the body as one argument (not piped in). Both print the
+answer, instead of processing the output with python or another program);
+`setrai-upload <exercise-id> <image-file>` attaches a JPEG, PNG, WebP or GIF to
+an exercise; `setrai-write <METHOD> /api/<path> '<json body>'` sends a POST, PUT,
+PATCH or DELETE with the body as one argument (not piped in). All three print the
 JSON response and use the server and key saved in the plugin's Settings. The
 coach prompt gives their full paths: call them by those paths. Outside the
 coach they are in the plugin's `bin` folder, two folders above this skill's

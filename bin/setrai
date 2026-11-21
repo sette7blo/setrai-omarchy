@@ -287,20 +287,21 @@ cmd_coach() {
     || { coach_fail "$agent is not installed. Choose an installed agent: omarchy default agent <name>"; return 1; }
   if $check; then printf '%s\n' "$agent"; return 0; fi
 
-  local here skills cli read_cmd write_cmd question="$*"
+  local here skills cli read_cmd write_cmd upload_cmd question="$*"
   here="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
   skills="$(dirname -- "$here")/agent-skill"
   cli="$here/setrai"
   read_cmd="$here/setrai-read"
   write_cmd="$here/setrai-write"
+  upload_cmd="$here/setrai-upload"
 
   local approved=()
   $allow_read && approved+=("$read_cmd")
-  $allow_write && approved+=("$write_cmd" "$cli")
+  $allow_write && approved+=("$write_cmd" "$upload_cmd" "$cli")
   coach_approvals "$agent" "${approved[@]}"
 
   local prompt="Act as my strength coach, working from my Setrai training data. The Setrai skills are in $skills, one folder each: read the SKILL.md of the ones you need before calling Setrai."
-  prompt+=" Reach Setrai only through these commands, called by their full paths: $read_cmd /api/<path> to read (add --jq '<filter>' to pick fields from a large answer), $write_cmd <METHOD> /api/<path> '<json body>' to change something, and $cli start <id> or $cli open <path> to start a workout or open Setrai. Never use curl for Setrai and never read its credentials file. Do not process Setrai output with python, jq or any other program: use --jq instead, so no extra approval is needed."
+  prompt+=" Reach Setrai only through these commands, called by their full paths: $read_cmd /api/<path> to read (add --jq '<filter>' to pick fields from a large answer), $write_cmd <METHOD> /api/<path> '<json body>' to change something, $upload_cmd <exercise id> <image file> to attach a JPEG, PNG, WebP or GIF to an exercise, and $cli start <id> or $cli open <path> to start a workout or open Setrai. Never use curl for Setrai and never read its credentials file. Do not process Setrai output with python, jq or any other program: use --jq instead, so no extra approval is needed."
   if $allow_write; then
     prompt+=" I have pre-approved Setrai changes: when I ask for one, such as logging a weight, starting a workout or changing a program, make it without asking me to confirm, then say what you changed. A program you designed yourself is still shown to me before you save it."
   else
@@ -340,13 +341,13 @@ cmd_coach() {
 }
 
 # --- Agent access ------------------------------------------------------------
-# bin/setrai-read and bin/setrai-write call these. They are the only way the
-# skills reach Setrai, so the coach can pre-approve exactly these two commands.
+# bin/setrai-read, -write and -upload call these. They are the only way the
+# skills reach Setrai, so the coach can pre-approve exactly these commands.
 # They take only /api/ paths on the server saved in Settings, read the address
 # and key from the connection file alone (no environment override, so a command
 # line cannot point the key at another server), and keep the key out of argv.
 api_request() {
-  local method="$1" path="$2" body="${3:-}"
+  local method="$1" path="$2" body="${3:-}" file="${4:-}" mime="${5:-}"
   if [[ ! "$path" =~ ^/api/[A-Za-z0-9._~%/?=\&,:+-]*$ || "$path" == *..* || "$path" == *//* ]]; then
     echo "setrai: the path must start with /api/ and hold only URL characters, e.g. /api/statistics" >&2
     return 2
@@ -361,10 +362,12 @@ api_request() {
     echo "setrai: the body is not valid JSON" >&2
     return 2
   fi
-  # The key reaches curl on stdin (-H @-), never on its command line.
-  local -a args=(-sS --fail-with-body --proto =http,https -m 30 -X "$method"
+  # The key reaches curl on stdin (-H @-), never on its command line. -q comes
+  # first so ~/.curlrc cannot add redirects or another host to a keyed request.
+  local -a args=(-q -sS --fail-with-body --proto =http,https -m 30 -X "$method"
     -H @- -H 'Accept: application/json')
   [[ -n "$body" ]] && args+=(-H 'Content-Type: application/json' --data-binary "$body")
+  [[ -n "$file" ]] && args+=(-m 120 -F "image=@$file;type=$mime")
   local code=0
   curl "${args[@]}" -- "$base$path" <<<"Authorization: Bearer $key" || code=$?
   echo
@@ -408,6 +411,36 @@ cmd_api_write() {
   api_request "$1" "$2" "${3:-}"
 }
 
+# setrai-upload attaches an image to an exercise. The file is copied once into
+# a private folder, so the bytes checked are the bytes sent. It must be a JPEG,
+# PNG, WebP or GIF by its first bytes; SVG is refused because it can carry
+# scripts. The exercise is checked first so a typo leaves no stray upload.
+cmd_api_upload() (
+  [[ $# -eq 2 && "$1" =~ ^[0-9]+$ ]] || { echo "usage: setrai-upload <exercise-id> <image-file>" >&2; exit 2; }
+  local id="$1" src="$2" max=$((10 * 1024 * 1024)) dir size magic ext mime out url
+  [[ -f "$src" && -r "$src" ]] || { echo "setrai-upload: $src is not a readable file" >&2; exit 2; }
+  dir="$(mktemp -d)" || exit 1
+  trap 'rm -rf -- "$dir"' EXIT
+  head -c $((max + 1)) -- "$src" > "$dir/image" || { echo "setrai-upload: could not read $src" >&2; exit 1; }
+  size="$(stat -c %s -- "$dir/image")"
+  (( size > 0 )) || { echo "setrai-upload: the file is empty" >&2; exit 2; }
+  (( size <= max )) || { echo "setrai-upload: the image must be 10 MB or smaller" >&2; exit 2; }
+  magic="$(od -An -tx1 -N12 -- "$dir/image" | tr -d ' \n')"
+  case "$magic" in
+    ffd8ff*) ext=jpg; mime=image/jpeg ;;
+    89504e470d0a1a0a*) ext=png; mime=image/png ;;
+    474946383[79]61*) ext=gif; mime=image/gif ;;
+    52494646????????57454250) ext=webp; mime=image/webp ;;
+    *) echo "setrai-upload: the file must be a JPEG, PNG, WebP or GIF image" >&2; exit 2 ;;
+  esac
+  mv -- "$dir/image" "$dir/image.$ext"
+  api_request GET "/api/exercises/$id" >/dev/null || exit
+  out="$(api_request POST /api/exercises/upload "" "$dir/image.$ext" "$mime")" || { printf '%s\n' "$out" >&2; exit 1; }
+  url="$(sed -nE 's#.*"imageUrl":"(/media/exercises/[A-Za-z0-9._-]+)".*#\1#p' <<<"$out")"
+  [[ -n "$url" ]] || { echo "setrai-upload: Setrai did not return an image path: $out" >&2; exit 1; }
+  api_request PATCH "/api/exercises/$id" "{\"imageUrl\":\"$url\"}"
+)
+
 cmd_stats()    { cmd_open "/statistics"; }
 cmd_recovery() { cmd_open "/recovery"; }
 
@@ -441,6 +474,7 @@ case "${1:-}" in
   coach)    shift; cmd_coach "$@" ;;
   api-read)  shift; cmd_api_read "$@" ;;
   api-write) shift; cmd_api_write "$@" ;;
+  api-upload) shift; cmd_api_upload "$@" ;;
   stats)    cmd_stats ;;
   recovery) cmd_recovery ;;
   ""|-h|--help) usage ;;
