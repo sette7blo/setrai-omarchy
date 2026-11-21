@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.7.1] - 2026-11-21
+
 ### Changed
 - `setrai-create-exercise` says when to leave secondary muscles empty: Setrai's
   recovery counts each one at half load, so the coach lists only muscles that do real
@@ -160,7 +162,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.1...HEAD
+[v0.7.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.4...v0.5.0
