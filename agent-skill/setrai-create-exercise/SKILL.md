@@ -45,7 +45,11 @@ Fields (the server rejects values outside these lists):
   `upper-back`, `lower-back`, `traps`, `shoulders`, `anterior-deltoid`,
   `lateral-deltoid`, `posterior-deltoid`, `biceps`, `forearms`, `triceps`,
   `core`, `abs`, `obliques`, `quadriceps`, `hamstrings`, `glutes`, `abductors`,
-  `adductors`, `calves`.
+  `adductors`, `calves`. List only muscles that do real work in the movement:
+  recovery counts each one at half the load of the primary muscle, so an extra
+  one makes Setrai think it needs rest. Leave the list empty for a
+  single-muscle exercise (calf raise, crunch). Holding the weight is not a
+  reason to add `forearms`: recovery counts forearms as biceps.
 - `equipment`: any of `bodyweight`, `barbell`, `dumbbells`, `kettlebell`,
   `bench`, `cable-machine`, `machine`, `pull-up-bar`, `steel-mace`. Use only
   equipment the user has (`setrai-read /api/profile`).

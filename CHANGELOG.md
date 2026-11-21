@@ -6,6 +6,11 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- `setrai-create-exercise` says when to leave secondary muscles empty: Setrai's
+  recovery counts each one at half load, so the coach lists only muscles that do real
+  work, and no longer adds forearms for grip (recovery counts them as biceps).
+
 ## [v0.7.0] - 2026-11-21
 
 ### Added
