@@ -123,6 +123,9 @@ Install adds `SKILL.md` symlinks to whichever agent homes exist
 - **setrai-show-stats** — summarize volume, streak, records and body weight
 - **setrai-recovery** — show readiness and per-muscle recovery
 - **setrai-create-program** — design a program with you and save it
+- **setrai-create-exercise** — add a missing exercise and give it a picture in
+  the library's style (needs an agent that can generate images; the skill
+  carries the style guide and four library pictures as references)
 - **setrai-weekly-review** — read the week's sessions and suggest what to adjust
 
 ### Coach
@@ -223,7 +226,7 @@ bin/setrai-read / -write / -upload
 bin/setrai-open.sh         URL opener the Panel shells out to (calls bin/setrai)
 setrai.desktop.in          Launcher template (install.sh fills in the CLI path)
 hooks/post-boot.sh         Optional Docker-stack autostart
-agent-skill/               Seven SKILL.md files for AI coaches
+agent-skill/               Eight SKILL.md files for AI coaches
 install.sh / uninstall.sh  Idempotent install, clean uninstall
 ```
 

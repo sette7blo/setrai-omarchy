@@ -36,7 +36,9 @@ A Setrai program is **one workout**. A weekly split is several programs
    movement_type, difficulty, default_sets, default_reps, default_rest }] }`.
    `?search=<text>` narrows it by name. Only use exercises from this list, and
    only ones whose `equipment` the user has. Never invent an exercise; if the
-   library lacks something, say so and pick the closest one it does have.
+   library lacks something, say so, pick the closest one it does have, and
+   offer to add the missing one with the `setrai-create-exercise` skill, which
+   also gives it a picture that matches the library.
 3. **Check what they already have.** `setrai-read /api/programs` → avoid a
    duplicate name, and point out an existing program that already covers it.
 4. **Draft the program** and show it in full before saving:

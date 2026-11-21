@@ -6,6 +6,15 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- New `setrai-create-exercise` skill: the coach checks the library, creates a missing
+  exercise with Setrai's allowed categories, muscles and equipment, then generates its
+  picture in the library's style and attaches it with `setrai-upload`. It carries a
+  written style guide and four library pictures as references, retries a wrong pose,
+  and says so instead of drawing a substitute when the agent cannot generate images.
+  The program skill now offers it when the library lacks an exercise. After updating,
+  run `./install.sh` again to link the new skill for agents used outside the coach.
+
 ## [v0.6.0] - 2026-11-21
 
 ### Added
