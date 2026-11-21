@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-11-21
+
 ### Added
 - `setrai-upload <exercise-id> <image-file>` uploads a JPEG, PNG, WebP or GIF of up to
   10 MB and sets it as the exercise's picture, so the coach can attach an image it made.
@@ -142,7 +144,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.4...v0.5.0
 [v0.4.4]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.3...v0.4.4
 [v0.4.3]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...v0.4.3
