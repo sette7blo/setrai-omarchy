@@ -6,14 +6,19 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-11-21
+
 ### Added
 - "Ask coach" opens the coach on the first empty workspace of the current screen, with
-  Setrai docked on the left edge and the coach terminal beside it. The dock reserves its width, so Hyprland tiles the
-  terminal into the rest of the screen. It shows readiness, this week's sessions, volume
-  and streak, the body weight chart, recent sessions and saved programs, and refreshes
-  every 15 seconds so the coach's changes show up. It is shown only on the coach's
+  Setrai docked on the left edge and the coach terminal beside it. The dock reserves its
+  width, so Hyprland tiles the terminal into the rest of the screen. It shows readiness,
+  this week's sessions, volume and streak, the body weight chart, recent sessions and
+  saved programs, and refreshes every 15 seconds so the coach's changes show up. It is shown only on the coach's
   workspace. Dock and terminal close together, from either one, and asking again while
   the coach is open goes back to it.
+- `setrai-read /api/<path> --jq '<filter>'` keeps only the fields the coach needs from a
+  large answer, so it does not run python or jq itself, which would each ask for
+  approval. The filter runs with an empty environment and may not import files.
 
 ### Changed
 - The coach is off by default. Switch it on in Settings ("Ask coach") to get the
@@ -27,6 +32,8 @@ project uses [Semantic Versioning](https://semver.org/).
   "Change without asking". They pre-approve exactly those commands for the coach's
   session (claude, cursor-agent, copilot; codex still asks). The coach now starts in its own
   folder, `~/.local/state/omarchy/setrai/coach`.
+- Settings are grouped into Connection and AI coach, the panel is wider while they are
+  open, and they scroll when they do not fit.
 
 ## [v0.4.4] - 2026-11-18
 
@@ -124,7 +131,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.4...v0.5.0
 [v0.4.4]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.3...v0.4.4
 [v0.4.3]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.2...v0.4.3
 [v0.4.2]: https://github.com/sette7blo/setrai-omarchy/compare/v0.4.1...v0.4.2
