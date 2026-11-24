@@ -6,33 +6,63 @@ set -euo pipefail
 
 CONNECTION_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/setrai/credentials.json"
 
-# The plugin's Settings view writes the server address and API key to
-# CONNECTION_FILE. SETRAI_URL and SETRAI_API_KEY in the environment override it.
-connection_field() {
-  local field="$1"
+# The plugin's Settings view writes the server address, the API key and the
+# plain-http consent to CONNECTION_FILE, the one place they are read from. The
+# file is read once, so the three always come from the same save.
+CONN_BASE="" CONN_KEY="" CONN_HTTP=""
+load_connection() {
+  local text field
+  CONN_BASE="" CONN_KEY="" CONN_HTTP=""
   [[ -r "$CONNECTION_FILE" ]] || return 0
-  if command -v jq >/dev/null 2>&1; then
-    jq -r --arg f "$field" '.[$f] // empty' "$CONNECTION_FILE" 2>/dev/null || true
-  else
-    sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$CONNECTION_FILE" | head -n 1
+  text="$(<"$CONNECTION_FILE")" || return 0
+  conn_field() {
+    if command -v jq >/dev/null 2>&1; then
+      jq -r --arg f "$1" '.[$f] // empty | strings' <<<"$text" 2>/dev/null || true
+    else
+      sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" <<<"$text" | head -n 1
+    fi
+  }
+  CONN_BASE="$(conn_field baseUrl)"; CONN_BASE="${CONN_BASE%/}"
+  CONN_KEY="$(conn_field apiKey)"
+  CONN_HTTP="$(conn_field httpAllowedFor)"; CONN_HTTP="${CONN_HTTP%/}"
+}
+load_connection
+
+SETRAI_URL="${CONN_BASE:-http://localhost:3000}"
+
+# Plain http is fine on this machine. Anywhere else the key is readable on the
+# network, so it is sent only to the address the user allowed in Settings.
+http_allowed() {
+  local base="$1"
+  [[ "$base" =~ ^https:// ]] && return 0
+  [[ "$base" =~ ^http://(localhost|127(\.[0-9]{1,3}){3}|\[::1\])(:[0-9]{1,5})?$ ]] && return 0
+  [[ -n "$CONN_HTTP" && "$CONN_HTTP" == "$base" ]]
+}
+
+# Prints why no keyed request can be sent, or nothing when one can.
+connection_problem() {
+  if [[ ! "$CONN_BASE" =~ ^https?://[^[:space:]]+$ ]]; then
+    echo "No server address saved; set it in the plugin's Settings."
+  elif [[ ! "$CONN_KEY" =~ ^setrai_[A-Za-z0-9_-]+$ ]]; then
+    echo "No API key saved; set it in the plugin's Settings."
+  elif ! http_allowed "$CONN_BASE"; then
+    echo "$CONN_BASE uses plain http. Allow sending the key over plain http in the plugin's Settings, or use https."
   fi
 }
 
-SETRAI_URL="${SETRAI_URL:-$(connection_field baseUrl)}"
-SETRAI_URL="${SETRAI_URL:-http://localhost:3000}"
-SETRAI_URL="${SETRAI_URL%/}"
-SETRAI_API_KEY="${SETRAI_API_KEY:-$(connection_field apiKey)}"
+# For start, quick and body, which report to a notification: say what is
+# wrong with the connection before trying, rather than "not responding".
+require_connection() {
+  local problem
+  problem="$(connection_problem)"
+  [[ -z "$problem" ]] && return 0
+  report "$problem"
+  return 1
+}
 
 api() {
   local method="$1" path="$2" data="${3:-}"
-  local -a args=(-fsS -X "$method")
-  if [[ -n "$SETRAI_API_KEY" ]]; then
-    args+=(-H "Authorization: Bearer $SETRAI_API_KEY")
-  fi
-  if [[ -n "$data" ]]; then
-    args+=(-H 'Content-Type: application/json' -d "$data")
-  fi
-  curl "${args[@]}" "$SETRAI_URL$path"
+  api_request "$method" "$path" "$data"
 }
 
 # Opens Setrai in its own window where Omarchy can, otherwise in the browser.
@@ -47,6 +77,7 @@ cmd_open() {
 }
 
 cmd_quick() {
+  require_connection || return 1
   local payload="${1:-{\}}"
   local response
   response="$(api POST /api/quick-workout "$payload")"
@@ -94,6 +125,7 @@ cmd_start() {
     report "setrai start needs jq."
     return 1
   fi
+  require_connection || return 1
   local sessions open
   if ! sessions="$(api GET /api/sessions 2>/dev/null)"; then
     report "Setrai is not responding. Check that the server is running."
@@ -166,6 +198,7 @@ profile_unit() {
 }
 
 cmd_body() {
+  require_connection || return 1
   local weight="${1:-}" unit
   unit="$(profile_unit)"
   if [[ -z "$weight" ]]; then
@@ -346,25 +379,24 @@ cmd_coach() {
 # They take only /api/ paths on the server saved in Settings, read the address
 # and key from the connection file alone (no environment override, so a command
 # line cannot point the key at another server), and keep the key out of argv.
+# The setrai commands that talk to the API go through the same function.
 api_request() {
   local method="$1" path="$2" body="${3:-}" file="${4:-}" mime="${5:-}"
   if [[ ! "$path" =~ ^/api/[A-Za-z0-9._~%/?=\&,:+-]*$ || "$path" == *..* || "$path" == *//* ]]; then
     echo "setrai: the path must start with /api/ and hold only URL characters, e.g. /api/statistics" >&2
     return 2
   fi
-  local base key
-  base="$(connection_field baseUrl)"
-  base="${base%/}"
-  key="$(connection_field apiKey)"
-  [[ "$base" =~ ^https?://[^[:space:]]+$ ]] || { echo "setrai: no server address saved; set it in the plugin's Settings" >&2; return 1; }
-  [[ "$key" =~ ^setrai_[A-Za-z0-9_-]+$ ]] || { echo "setrai: no API key saved; set it in the plugin's Settings" >&2; return 1; }
+  local base="$CONN_BASE" key="$CONN_KEY" problem
+  problem="$(connection_problem)"
+  [[ -z "$problem" ]] || { echo "setrai: $problem" >&2; return 1; }
   if [[ -n "$body" ]] && command -v jq >/dev/null 2>&1 && ! jq -e . >/dev/null 2>&1 <<<"$body"; then
     echo "setrai: the body is not valid JSON" >&2
     return 2
   fi
   # The key reaches curl on stdin (-H @-), never on its command line. -q comes
-  # first so ~/.curlrc cannot add redirects or another host to a keyed request.
-  local -a args=(-q -sS --fail-with-body --proto =http,https -m 30 -X "$method"
+  # first so ~/.curlrc cannot add redirects or another host to a keyed request,
+  # and a redirect ends the request (exit 47) instead of being followed.
+  local -a args=(-q -L --max-redirs 0 -sS --fail-with-body --proto =http,https -m 30 -X "$method"
     -H @- -H 'Accept: application/json')
   [[ -n "$body" ]] && args+=(-H 'Content-Type: application/json' --data-binary "$body")
   [[ -n "$file" ]] && args+=(-m 120 -F "image=@$file;type=$mime")
@@ -419,9 +451,14 @@ cmd_api_upload() (
   [[ $# -eq 2 && "$1" =~ ^[0-9]+$ ]] || { echo "usage: setrai-upload <exercise-id> <image-file>" >&2; exit 2; }
   local id="$1" src="$2" max=$((10 * 1024 * 1024)) dir size magic ext mime out url
   [[ -f "$src" && -r "$src" ]] || { echo "setrai-upload: $src is not a readable file" >&2; exit 2; }
+  # Opened once: the regular-file check and the read both use this handle,
+  # so a file swapped in after the check is never the one sent.
+  exec 3<"$src" || { echo "setrai-upload: could not read $src" >&2; exit 1; }
+  [[ "$(stat -L -c %F /dev/fd/3)" == "regular file" ]] || { echo "setrai-upload: $src is not a regular file" >&2; exit 2; }
   dir="$(mktemp -d)" || exit 1
   trap 'rm -rf -- "$dir"' EXIT
-  head -c $((max + 1)) -- "$src" > "$dir/image" || { echo "setrai-upload: could not read $src" >&2; exit 1; }
+  head -c $((max + 1)) <&3 > "$dir/image" || { echo "setrai-upload: could not read $src" >&2; exit 1; }
+  exec 3<&-
   size="$(stat -c %s -- "$dir/image")"
   (( size > 0 )) || { echo "setrai-upload: the file is empty" >&2; exit 2; }
   (( size <= max )) || { echo "setrai-upload: the image must be 10 MB or smaller" >&2; exit 2; }
@@ -461,8 +498,8 @@ Commands:
 
 Connection:
   $CONNECTION_FILE
-  (server address and API key, written by the plugin's Settings view;
-  SETRAI_URL and SETRAI_API_KEY in the environment override it)
+  (server address, API key and plain-http consent, written by the plugin's
+  Settings view)
 EOF
 }
 

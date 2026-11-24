@@ -42,6 +42,7 @@ Panel {
 
   readonly property string notice: {
     if (!service) return ""
+    if (service.httpBlocked) return "This address uses plain http. Allow sending the key over plain http in settings, or use https."
     if (!configured) return "Connect your Setrai server to see training here."
     if (service.status === "unauthorized") return "Setrai did not accept the API key. Paste a new one in settings."
     if (service.status === "unreachable") return "Setrai is not responding. Check that the server is running."

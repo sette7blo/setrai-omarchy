@@ -23,8 +23,14 @@ Column {
   property bool probeOk: false
   property bool probing: false
   property bool edited: false
-  property bool dirty: Model.normalizeBaseUrl(urlField.text) !== (service ? service.baseUrl : "")
+  // The form's plain-http switch; it applies only to the address it was given for.
+  property bool allowHttp: false
+  readonly property string formUrl: Model.normalizeBaseUrl(urlField.text)
+  readonly property bool formNeedsConsent: Model.needsHttpConsent(formUrl)
+  readonly property string formHttpAllowedFor: formNeedsConsent && allowHttp ? formUrl : ""
+  property bool dirty: formUrl !== (service ? service.baseUrl : "")
     || keyField.text !== (service ? service.apiKey : "")
+    || formHttpAllowedFor !== (service && service.httpAllowedFor === service.baseUrl ? service.httpAllowedFor : "")
     || pollField.value !== (service ? service.pollSeconds : Model.DEFAULT_POLL_SECONDS)
 
   signal closeSettings()
@@ -33,6 +39,7 @@ Column {
     if (!service) return
     urlField.text = service.baseUrl || Model.DEFAULT_BASE_URL
     keyField.text = service.apiKey || ""
+    allowHttp = !!service.baseUrl && service.httpAllowedFor === service.baseUrl
     pollField.value = service.pollSeconds || Model.DEFAULT_POLL_SECONDS
     probeMessage = ""
     probeOk = false
@@ -43,7 +50,7 @@ Column {
   function save() {
     if (!service) return
     service.persistSettings({ pollSeconds: pollField.value })
-    service.persistConnection({ baseUrl: urlField.text, apiKey: keyField.text })
+    service.persistConnection({ baseUrl: urlField.text, apiKey: keyField.text, httpAllowedFor: root.formHttpAllowedFor })
   }
 
   Component.onCompleted: reset()
@@ -55,6 +62,7 @@ Column {
     // user starts editing.
     function onApiKeyChanged() { if (!root.edited) root.reset() }
     function onBaseUrlChanged() { if (!root.edited) root.reset() }
+    function onHttpAllowedForChanged() { if (!root.edited) root.reset() }
     function onPollSecondsChanged() { if (!root.edited) root.reset() }
     function onConnectionProbed(ok, message, info) {
       root.probing = false
@@ -87,13 +95,24 @@ Column {
       color: root.dim
       font.family: root.fontFamily
     }
-    TextField {
+    GuardedTextField {
       id: urlField
       width: parent.width
       placeholderText: Model.DEFAULT_BASE_URL
       foreground: root.foreground
       accent: root.accent
       onTextEdited: { root.edited = true; root.probeMessage = "" }
+    }
+    Toggle {
+      width: parent.width
+      visible: root.formNeedsConsent
+      label: "Send the key over plain http"
+      description: "Anyone on the network between here and the server can read it. Use https where you can."
+      checked: root.allowHttp
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      onClicked: { root.allowHttp = !root.allowHttp; root.edited = true; root.probeMessage = "" }
     }
   }
 
@@ -107,7 +126,7 @@ Column {
       color: root.dim
       font.family: root.fontFamily
     }
-    TextField {
+    GuardedTextField {
       id: keyField
       width: parent.width
       placeholderText: "setrai_..."
@@ -140,6 +159,13 @@ Column {
     accent: root.accent
     fontFamily: root.fontFamily
     onModified: function(v) { root.edited = true; pollField.value = v }
+  }
+  // The number box is a TextInput too: editable (and so reading the
+  // clipboard) only while it has focus, as GuardedTextField does.
+  Binding {
+    target: pollField.field
+    property: "editable"
+    value: pollField.field.activeFocus
   }
 
   PanelSeparator { foreground: root.foreground }
@@ -183,7 +209,7 @@ Column {
         if (!root.service) return
         root.probing = true
         root.probeMessage = ""
-        root.service.testConnection(urlField.text, keyField.text)
+        root.service.testConnection(urlField.text, keyField.text, root.allowHttp)
       }
     }
 

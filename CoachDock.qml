@@ -31,6 +31,7 @@ PanelWindow {
   readonly property bool hasReadiness: configured && service.readiness !== null
   readonly property string weightUnit: service.weightUnit
   readonly property string notice: {
+    if (service.httpBlocked) return "Allow plain http in the panel settings, or use https."
     if (!configured) return "Connect your Setrai server in the panel settings."
     if (service.status === "unauthorized") return "Setrai did not accept the API key."
     if (service.status === "unreachable") return "Setrai is not responding."

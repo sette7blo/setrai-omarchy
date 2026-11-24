@@ -36,14 +36,16 @@ Item {
   readonly property string baseUrl: String(connection.baseUrl || "")
   readonly property string apiKey: String(connection.apiKey || "")
   readonly property bool hasKey: Model.isValidKey(apiKey)
-  readonly property bool configured: Model.isHttpUrl(baseUrl) && hasKey
+  readonly property string httpAllowedFor: String(connection.httpAllowedFor || "")
+  // A plain-http address on another machine without the user's consent.
+  readonly property bool httpBlocked: Model.isHttpUrl(baseUrl) && hasKey && !Model.httpAllowed(connection)
+  readonly property bool configured: Model.isHttpUrl(baseUrl) && hasKey && Model.httpAllowed(connection)
 
   // --- Filesystem layout ---------------------------------------------------
   readonly property string home: Quickshell.env("HOME") || ""
   readonly property string stateDir: home + "/.local/state/omarchy/setrai"
   readonly property string cacheDir: home + "/.cache/omarchy/setrai"
   readonly property string connectionPath: stateDir + "/credentials.json"
-  readonly property string headerPath: cacheDir + "/header.txt"
 
   // --- Fetched state exposed to widget/panel -------------------------------
   property var sessions: []
@@ -121,12 +123,15 @@ Item {
 
   // --- Internal state ------------------------------------------------------
   property bool dirsReady: false
-  property bool headerReady: false
   property var writeQueue: []
   property string pendingWriteText: ""
   property string pendingWriteThen: ""
   property var reqQueue: []
   property var currentReq: null
+  // Header lines waiting to go to a starting curl's stdin.
+  property string apiStdin: ""
+  property string postStdin: ""
+  property string probeStdin: ""
   property bool probing: false
 
   // --- Plugin settings load ------------------------------------------------
@@ -180,17 +185,15 @@ Item {
     secretProc.running = true
   }
 
-  // --- Header refresh ------------------------------------------------------
-  function refreshHeader() {
-    if (!root.dirsReady) return
-    if (!root.hasKey) { root.headerReady = false; return }
-    var text = Model.bearerHeaderText(root.apiKey)
-    enqueueWrite(root.cacheDir, "header.txt", text, "header")
+  // Address and key are taken together from one connection snapshot when a
+  // request starts, so a key is never sent to an address saved with another.
+  function connectionId(conn) {
+    return String(conn.baseUrl || "") + "\n" + String(conn.apiKey || "")
   }
 
   // --- HTTP request queue --------------------------------------------------
   function enqueueRequest(kind) {
-    if (!root.configured || !root.headerReady) return
+    if (!root.configured) return
     for (var i = 0; i < root.reqQueue.length; i++) {
       if (root.reqQueue[i].kind === kind) return  // already pending
     }
@@ -203,7 +206,7 @@ Item {
     }
     var path = pathForKind[kind] || ""
     if (!path) return
-    root.reqQueue = root.reqQueue.concat([{ kind: kind, url: Model.apiUrl(root.baseUrl, path) }])
+    root.reqQueue = root.reqQueue.concat([{ kind: kind, path: path }])
     pump()
   }
 
@@ -220,17 +223,21 @@ Item {
   }
 
   function pump() {
-    if (apiProc.running || !root.reqQueue.length || !root.dirsReady || !root.headerReady) return
+    if (apiProc.running || !root.reqQueue.length || !root.dirsReady) return
+    var conn = root.connection
+    if (!Model.isValidKey(conn.apiKey) || !Model.isHttpUrl(conn.baseUrl) || !Model.httpAllowed(conn)) {
+      root.reqQueue = []
+      return
+    }
     var next = root.reqQueue[0]
     root.reqQueue = root.reqQueue.slice(1)
-    root.currentReq = next
+    root.currentReq = { kind: next.kind, connId: root.connectionId(conn) }
     root.status = "polling"
-    apiProc.command = [
-      "curl", "-sS", "-m", "15", "-w", "\n%{http_code}",
-      "--proto", "=http,https",
-      "-H", "@" + root.headerPath,
-      "--", next.url
-    ]
+    root.apiStdin = Model.bearerHeaderText(conn.apiKey)
+    apiProc.command = Model.keyedCurlCmd([
+      "-m", "15", "-w", "\n%{http_code}", "-H", "Accept: application/json",
+      "--", Model.apiUrl(conn.baseUrl, next.path)
+    ])
     apiProc.running = true
   }
 
@@ -447,42 +454,46 @@ Item {
       root.bodyWeightSaved(false, parsed.error)
       return
     }
-    if (!root.configured || !root.headerReady) {
+    var conn = root.connection
+    if (!root.configured || !root.dirsReady) {
       root.bodyWeightSaved(false, "Connect your Setrai server first.")
       return
     }
     root.savingBodyWeight = true
-    // The key stays in the private header file; the body holds no secret.
-    postProc.command = [
-      "curl", "-sS", "-m", "15", "-w", "\n%{http_code}",
-      "--proto", "=http,https",
-      "-H", "@" + root.headerPath,
+    root.postStdin = Model.bearerHeaderText(conn.apiKey)
+    postProc.command = Model.keyedCurlCmd([
+      "-m", "15", "-w", "\n%{http_code}",
+      "-H", "Accept: application/json",
       "-H", "Content-Type: application/json",
       "-X", "POST",
       "--data-raw", Model.bodyWeightBody(parsed.weightKg, new Date()),
-      "--", Model.apiUrl(root.baseUrl, "/api/body-weight")
-    ]
+      "--", Model.apiUrl(conn.baseUrl, "/api/body-weight")
+    ])
     postProc.running = true
   }
 
   // --- Test-connection one-shot (used by SettingsView) ---------------------
-  // Does not touch the main poll queue; writes a temporary probe header file
-  // so the Save button hasn't been pressed yet.
-  function testConnection(testBaseUrl, testKey) {
-    var url = Model.apiUrl(testBaseUrl, "/api/api-keys/current")
+  // Tests the values in the form before they are saved; does not touch the
+  // main poll queue. allowHttp is the form's plain-http switch.
+  function testConnection(testBaseUrl, testKey, allowHttp) {
+    var base = Model.normalizeBaseUrl(testBaseUrl)
+    var url = Model.apiUrl(base, "/api/api-keys/current")
     if (!Model.isHttpUrl(url) || !Model.isValidKey(testKey)) {
       root.connectionProbed(false, "Enter the server address and an API key that starts with setrai_", null)
       return
     }
+    if (Model.needsHttpConsent(base) && allowHttp !== true) {
+      root.connectionProbed(false, "This address uses plain http. Switch on sending the key over plain http, or use https.", null)
+      return
+    }
     if (root.probing) return
     root.probing = true
-    probeProc.command = [
-      "curl", "-sS", "-m", "10", "-w", "\n%{http_code}",
-      "--proto", "=http,https",
-      "-H", "Authorization: Bearer " + testKey,
+    root.probeStdin = Model.bearerHeaderText(testKey)
+    probeProc.command = Model.keyedCurlCmd([
+      "-m", "10", "-w", "\n%{http_code}",
       "-H", "Accept: application/json",
       "--", url
-    ]
+    ])
     probeProc.running = true
   }
 
@@ -494,7 +505,7 @@ Item {
       if (code === 0) {
         root.dirsReady = true
         connectionFile.reload()
-        root.refreshHeader()
+        root.forcePoll()
       } else {
         root.status = "error"
         root.statusDetail = "Could not create " + root.stateDir
@@ -516,12 +527,9 @@ Item {
       if (code !== 0) {
         root.status = "error"
         root.statusDetail = "Failed to write private file (" + then + ")"
-      } else if (then === "header") {
-        root.headerReady = true
-        root.forcePoll()
       } else if (then === "connection") {
-        // connectionFile's watchChanges handles the reload; refresh the header too.
-        root.refreshHeader()
+        // connectionFile's watchChanges handles the reload.
+        root.forcePoll()
       }
       Qt.callLater(root.pumpWrites)
       Qt.callLater(root.pump)
@@ -531,14 +539,21 @@ Item {
   Process {
     id: apiProc
     running: false
+    stdinEnabled: true
     stdout: StdioCollector { id: apiOut; waitForEnd: true }
+    onRunningChanged: if (running) { apiProc.write(root.apiStdin); root.apiStdin = "" }
     onExited: function(code) {
       var raw = String(apiOut.text || "")
       var req = root.currentReq
       root.currentReq = null
+      // An answer from a connection that has since been replaced is dropped.
+      if (req && req.connId !== root.connectionId(root.connection)) {
+        Qt.callLater(root.pump)
+        return
+      }
       if (code !== 0) {
         root.status = "unreachable"
-        root.statusDetail = "curl exit " + code
+        root.statusDetail = code === 47 ? "Setrai answered with a redirect, which is not followed" : "curl exit " + code
         root.reqQueue = []
       } else {
         var lastNewline = raw.lastIndexOf("\n")
@@ -558,7 +573,9 @@ Item {
   Process {
     id: postProc
     running: false
+    stdinEnabled: true
     stdout: StdioCollector { id: postOut; waitForEnd: true }
+    onRunningChanged: if (running) { postProc.write(root.postStdin); root.postStdin = "" }
     onExited: function(code) {
       root.savingBodyWeight = false
       var raw = String(postOut.text || "")
@@ -583,10 +600,16 @@ Item {
   Process {
     id: probeProc
     running: false
+    stdinEnabled: true
     stdout: StdioCollector { id: probeOut; waitForEnd: true }
+    onRunningChanged: if (running) { probeProc.write(root.probeStdin); root.probeStdin = "" }
     onExited: function(code) {
       root.probing = false
       var raw = String(probeOut.text || "")
+      if (code === 47) {
+        root.connectionProbed(false, "The server answered with a redirect. Enter the address it redirects to.", null)
+        return
+      }
       if (code !== 0) {
         root.connectionProbed(false, "Could not reach the server. Check the address and that Setrai is running.", null)
         return
@@ -619,12 +642,11 @@ Item {
       root.connection = Model.parseConnection(text())
       root.connectionLoaded = true
       root.migrateLegacyUrl()
-      root.refreshHeader()
+      root.forcePoll()
     }
     onLoadFailed: {
       root.connection = Model.emptyConnection()
       root.connectionLoaded = true
-      root.headerReady = false
       root.migrateLegacyUrl()
       if (root.dirsReady && !root.configured) root.status = "unconfigured"
     }
@@ -646,9 +668,8 @@ Item {
     function onShellConfigChanged() { root.loadSettings() }
   }
 
-  onBaseUrlChanged: {
-    if (root.configured && root.headerReady) root.forcePoll()
-  }
+  onConfiguredChanged: if (root.configured) root.forcePoll()
+  onBaseUrlChanged: if (root.configured) root.forcePoll()
 
   onPanelOpenChanged: if (root.panelOpen) {
     root.forcePoll()
@@ -658,7 +679,7 @@ Item {
   Timer {
     interval: Math.max(Model.MIN_POLL_SECONDS,
       root.coachDocked ? Math.min(root.pollSeconds, root.dockPollSeconds) : root.pollSeconds) * 1000
-    running: root.configured && root.headerReady
+    running: root.configured
     repeat: true
     onTriggered: root.forcePoll()
   }

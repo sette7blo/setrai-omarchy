@@ -88,14 +88,17 @@ function settingsPayload(settings) {
 
 // ----- Connection (server address + API key, private state file) ----------
 
+// httpAllowedFor holds the one plain-http address the user agreed to send the
+// key to. It is an address, not a flag, so saving any other address drops it.
 function emptyConnection() {
-  return { baseUrl: "", apiKey: "" }
+  return { baseUrl: "", apiKey: "", httpAllowedFor: "" }
 }
 
 function cleanConnection(data) {
   return {
     baseUrl: normalizeBaseUrl(data.baseUrl),
-    apiKey: String(data.apiKey || "")
+    apiKey: String(data.apiKey || ""),
+    httpAllowedFor: normalizeBaseUrl(data.httpAllowedFor)
   }
 }
 
@@ -134,6 +137,33 @@ function isHttpUrl(url) {
   return /^https?:\/\//.test(String(url || ""))
 }
 
+// This machine only: localhost, 127.x.x.x or [::1], with an optional port.
+function isLoopbackUrl(url) {
+  return /^https?:\/\/(localhost|127(\.[0-9]{1,3}){3}|\[::1\])(:[0-9]{1,5})?(\/|$)/i.test(String(url || ""))
+}
+
+// Plain http to another machine sends the key readable on the network, so it
+// needs the user's consent for that exact address.
+function needsHttpConsent(url) {
+  return /^http:\/\//i.test(String(url || "")) && !isLoopbackUrl(url)
+}
+
+function httpAllowed(conn) {
+  var c = conn && typeof conn === "object" ? conn : {}
+  var base = normalizeBaseUrl(c.baseUrl)
+  return !needsHttpConsent(base) || (!!base && normalizeBaseUrl(c.httpAllowedFor) === base)
+}
+
+// Every keyed request runs through this. The header line arrives on stdin and
+// is handed to curl on stdin too, so the key is never in a command line. -q
+// must come first: it keeps ~/.curlrc out. A redirect fails (exit 47) instead
+// of carrying the key to another address.
+function keyedCurlCmd(args) {
+  var script = "IFS= read -r h || exit 90\n"
+    + "printf '%s\\n' \"$h\" | curl -q -L --max-redirs 0 --proto =http,https -sS -H @- \"$@\"\n"
+  return ["sh", "-c", script, "setrai-curl"].concat(args || [])
+}
+
 function apiUrl(base, path) {
   var root = normalizeBaseUrl(base)
   if (!root) return ""
@@ -143,9 +173,7 @@ function apiUrl(base, path) {
 }
 
 function bearerHeaderText(apiKey) {
-  var key = String(apiKey || "")
-  return "Authorization: Bearer " + key + "\n"
-    + "Accept: application/json\n"
+  return "Authorization: Bearer " + String(apiKey || "").replace(/[\r\n]/g, "") + "\n"
 }
 
 // ----- Shell helpers (atomic private writes) ------------------------------
@@ -183,7 +211,9 @@ function ensurePrivateDirsCmd(stateDir, cacheDir) {
       + "  chmod 700 -- \"$t\" || exit 1\n"
       + "}\n"
       + "ensure \"$1\"\n"
-      + "ensure \"$2\"\n",
+      + "ensure \"$2\"\n"
+      // Versions before 0.8.0 kept the key in this file; requests now take it on stdin.
+      + "rm -f -- \"$2/header.txt\"\n",
     "setrai-dirs", String(stateDir || ""), String(cacheDir || "")]
 }
 
@@ -503,6 +533,10 @@ if (typeof module !== "undefined" && module.exports) {
     mergeConnection: mergeConnection,
     isValidKey: isValidKey,
     isHttpUrl: isHttpUrl,
+    isLoopbackUrl: isLoopbackUrl,
+    needsHttpConsent: needsHttpConsent,
+    httpAllowed: httpAllowed,
+    keyedCurlCmd: keyedCurlCmd,
     apiUrl: apiUrl,
     bearerHeaderText: bearerHeaderText,
     utf8ByteLength: utf8ByteLength,
