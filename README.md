@@ -36,15 +36,23 @@ hook):
              --autostart --compose /path/to/setrai/compose.yml
 ```
 
-The installer is idempotent — re-running it refreshes symlinks without
-destructive side effects (existing non-symlink files are backed up with a
-timestamp suffix).
+The installer is idempotent. It never moves or replaces anything: a path that
+already holds something else is left as it is. Add `--skills` to also link the
+agent skills (see below).
 
 After install, click the bar icon, then the gear icon. Enter the server
 address and API key, click **Test connection**, then **Save**. Both are
 written to `~/.local/state/omarchy/setrai/credentials.json` (mode 600), the
 one place the plugin, the CLI, the launcher and the agent skills
 read them from. `--setrai-url` only pre-fills the address there.
+
+The key is sent only to that address. Every request disables curl's own
+startup file (`~/.curlrc`) and refuses redirects, and the key goes to curl on
+its standard input, never on a command line. Plain `http://` is accepted
+as-is only for this machine (`localhost`, `127.x.x.x`, `[::1]`). For a plain
+http address on another machine, Settings shows **Send the key over plain
+http**: until you switch it on, nothing is sent there. The consent belongs to
+that one address, so saving a different address drops it. Prefer https.
 
 ## What gets installed
 
@@ -56,7 +64,7 @@ read them from. `--setrai-url` only pre-fills the address there.
 | `~/.config/omarchy/hooks/post-boot.d/50-setrai.sh` | Autostart (optional, with `--autostart`) |
 | `~/.config/setrai-omarchy/config` | Compose path for the optional autostart hook |
 | `~/.local/state/omarchy/setrai/credentials.json` | Server address and API key (mode 600, written by the Settings view) |
-| `~/.claude/skills/setrai-*`, `~/.codex/skills/setrai-*`, etc. | Agent skills (only if the agent dir exists) |
+| `~/.claude/skills/setrai-*`, `~/.codex/skills/setrai-*`, etc. | Agent skills (only with `--skills`, and only if the agent dir exists) |
 
 ## Bar icon
 
@@ -108,14 +116,15 @@ setrai recovery          # open recovery
 ```
 
 The CLI reads the server address and API key from
-`~/.local/state/omarchy/setrai/credentials.json`. `SETRAI_URL` and
-`SETRAI_API_KEY` in the environment override them for one-off runs.
+`~/.local/state/omarchy/setrai/credentials.json` only, with the same rules as
+the popover (no redirects, key on stdin, plain http only with consent).
 
 ## Agent skills
 
-Install adds `SKILL.md` symlinks to whichever agent homes exist
-(`~/.claude/skills/`, `~/.codex/skills/`, `~/.agents/skills/`,
-`~/.copilot/skills/`). Skills:
+`./install.sh --skills` adds `SKILL.md` symlinks to whichever agent homes
+exist (`~/.claude/skills/`, `~/.codex/skills/`, `~/.agents/skills/`,
+`~/.copilot/skills/`). Without `--skills` the installer makes no links there.
+The coach does not need them: it is handed the skill files by path. Skills:
 
 - **setrai-start-workout** — start a session from a saved program
 - **setrai-quick-workout** — generate and start a constrained workout
@@ -199,8 +208,9 @@ switches automatically.
 ./uninstall.sh
 ```
 
-Removes all symlinks, the config dir, the connection file
-and the header-cache dir, plus the plugin registration with Omarchy.
+Removes the symlinks that point into this plugin (other files of the same name
+stay), the config dir, the connection file and the cache dir, plus the plugin
+registration with Omarchy.
 The plugin does not add anything to the Omarchy menu. Versions before 0.4.0
 added a Fitness section; `install.sh` and `uninstall.sh` both remove it.
 

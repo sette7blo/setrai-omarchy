@@ -184,7 +184,7 @@ Column {
     spacing: Style.spacing.lg
     visible: root.allowEntry
 
-    TextField {
+    GuardedTextField {
       id: weightField
       Layout.fillWidth: true
       placeholderText: "Today's weight in " + root.unit

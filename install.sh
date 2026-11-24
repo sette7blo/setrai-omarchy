@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent installer for the setrai Omarchy plugin.
-# Links the bar widget, CLI, launcher and agent skills.
+# Links the bar widget, CLI and launcher. The agent skills are linked only on
+# request, with --skills: the coach is handed them by path and needs no links.
 
 set -euo pipefail
 
@@ -25,13 +26,17 @@ CONNECTION_FILE="$CONNECTION_DIR/credentials.json"
 SETRAI_URL=""
 AUTOSTART=false
 COMPOSE_PATH=""
+SKILLS=false
 
 usage() {
   cat <<EOF
-Usage: $0 [--setrai-url URL] [--autostart --compose /path/to/compose.yml]
+Usage: $0 [--setrai-url URL] [--autostart --compose /path/to/compose.yml] [--skills]
 
 --setrai-url sets the server address the plugin and the setrai CLI share.
 It can be changed later in the plugin's Settings view.
+--skills also links the agent skills into the agent homes that exist
+(~/.claude, ~/.codex, ~/.agents, ~/.copilot). Without it, no skill links are
+made or changed. uninstall.sh removes them.
 EOF
 }
 
@@ -42,6 +47,8 @@ while [[ $# -gt 0 ]]; do
       SETRAI_URL="$2"; shift 2 ;;
     --autostart)
       AUTOSTART=true; shift ;;
+    --skills)
+      SKILLS=true; shift ;;
     --compose)
       [[ $# -ge 2 ]] || { echo "Missing value for --compose" >&2; exit 2; }
       COMPOSE_PATH="$2"; shift 2 ;;
@@ -186,6 +193,7 @@ install_hook() {
 }
 
 install_skills() {
+  $SKILLS || return 0
   local skill_src skill_name
   for skill_src in "$PROJECT_DIR"/agent-skill/*/; do
     [[ -d "$skill_src" ]] || continue

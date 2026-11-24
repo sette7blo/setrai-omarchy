@@ -6,6 +6,35 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- The API key is sent to curl on stdin by every request (popover, Test
+  connection, `setrai start`/`quick`/`body`), never on a command line, and the
+  popover no longer keeps it in a header file.
+- Every keyed request ignores `~/.curlrc` and refuses redirects, so a redirect
+  can no longer carry the key to another address.
+- The address and key of a request come from one saved connection: changing
+  the address no longer sends the old key to the new server, and an answer from
+  the old server is dropped.
+- Plain `http://` to another machine needs the new Settings switch **Send the
+  key over plain http**, given for that address only. `localhost` and
+  `127.x.x.x` are unaffected.
+- Settings and body-weight text fields no longer read the clipboard while they
+  are not being typed in (a slow clipboard offer could stall the shell).
+- `setrai-upload` checks and reads the image through one open handle.
+
+### Changed
+- `install.sh` links the agent skills only with `--skills`. The coach does not
+  need the links.
+- `SETRAI_URL` and `SETRAI_API_KEY` no longer override the saved connection.
+
+### Fixed
+- `uninstall.sh` also removes the `setrai-create-exercise` skill link.
+
+### Upgrading
+- If your Setrai address is plain http on another machine, open Settings,
+  switch on **Send the key over plain http** and save. Until then the
+  popover shows a notice and sends nothing.
+
 ## [v0.7.1] - 2026-11-21
 
 ### Changed

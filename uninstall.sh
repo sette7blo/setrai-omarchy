@@ -58,11 +58,13 @@ if [[ -f "$MENU_FILE" ]] && grep -qF -- "$MENU_BEGIN" "$MENU_FILE"; then
   log "removed Fitness entries from $MENU_FILE"
 fi
 
-# Agent skill symlinks.
+# Agent skill symlinks (install.sh --skills). Every setrai-* entry is looked
+# at, so a skill added in a later version is covered too; remove_link only
+# takes links that point into this plugin.
 for agent_home in "$HOME/.claude" "$HOME/.codex" "$HOME/.agents" "$HOME/.copilot"; do
   [[ -d "$agent_home/skills" ]] || continue
-  for skill in setrai-start-workout setrai-log-body setrai-show-stats setrai-quick-workout setrai-recovery setrai-create-program setrai-weekly-review; do
-    remove_link "$agent_home/skills/$skill"
+  for skill in "$agent_home/skills"/setrai-*; do
+    remove_link "$skill"
   done
 done
 
