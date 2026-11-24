@@ -71,11 +71,11 @@ Item {
   // --- Coach dock ------------------------------------------------------------
   // "Ask coach" docks Setrai on the left edge and opens the agent terminal,
   // which Hyprland tiles into the space left over. The terminal is detached,
-  // so it is followed by its window: omarchy-agent gives every agent window
-  // the app-id below, and the coach's is the first one that was not open
-  // before the launch.
+  // so it is followed by its window: `setrai coach` launches it with the
+  // app-id below, used by no other agent window, and the coach's is the first
+  // one with it that was not open before the launch.
   readonly property string pluginDir: home + "/.config/omarchy/plugins/" + Model.PLUGIN_ID
-  readonly property string agentAppId: "org.omarchy.agent"
+  readonly property string agentAppId: "org.omarchy.agent.setrai"
   readonly property int dockPollSeconds: 15
   property bool coachDocked: false
   property string coachMonitorName: ""

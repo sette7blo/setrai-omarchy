@@ -6,6 +6,12 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The coach terminal has its own app-id, `org.omarchy.agent.setrai`, so the coach dock
+  never follows another agent window (`omarchy-agent`, the console agent, another
+  plugin's agent) that opens while the coach is starting, and its close button never
+  closes one.
+
 ## [v0.8.0] - 2026-11-24
 
 ### Security

@@ -366,10 +366,12 @@ cmd_coach() {
   # The coach starts in its own folder: the agent needs no project, and the
   # folder holds cursor-agent's allow list. uwsm starts the terminal in /
   # whatever this shell's folder is, so env -C sets it inside the terminal.
-  # The app-id is omarchy-agent's, which the coach dock follows.
+  # The app-id is the coach's own, which the dock follows; other agent windows
+  # (omarchy-agent, the console, other plugins) use org.omarchy.agent. It stays
+  # under org.omarchy. so Omarchy's terminal window rules still apply.
   mkdir -p "$COACH_DIR" && chmod 700 "$COACH_DIR"
   COACH_CMD=(env -C "$COACH_DIR" "${COACH_CMD[@]}")
-  omarchy-launch-tui --app-id=org.omarchy.agent "${COACH_CMD[@]}" >/dev/null 2>&1 &
+  omarchy-launch-tui --app-id=org.omarchy.agent.setrai "${COACH_CMD[@]}" >/dev/null 2>&1 &
   disown
 }
 
