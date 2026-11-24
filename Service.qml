@@ -220,6 +220,9 @@ Item {
     enqueueRequest("statistics")
     enqueueRequest("profile")
     if (root.coachDocked) enqueueRequest("programs")
+    // Requests queued before the private folders were ready are already
+    // pending, so the calls above do not start them; this does.
+    pump()
   }
 
   function pump() {
