@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.8.1] - 2026-11-25
+
 ### Fixed
 - The coach terminal has its own app-id, `org.omarchy.agent.setrai`, so the coach dock
   never follows another agent window (`omarchy-agent`, the console agent, another
@@ -205,7 +207,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.1...HEAD
+[v0.8.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.1...v0.8.0
 [v0.7.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.6.0...v0.7.0
