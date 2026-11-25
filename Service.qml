@@ -392,7 +392,13 @@ Item {
           return
         }
       }
-    } else if (!root.coachWindow) {
+    } else {
+      // Read the list itself: coachWindow is bound to it and may not have
+      // caught up yet when this handler runs, so it can still name a closed
+      // window.
+      for (var k = 0; k < root.agentWindows.length; k++) {
+        if (root.agentWindows[k].address === root.coachAddress) return
+      }
       root.closeCoachDock()
     }
   }
