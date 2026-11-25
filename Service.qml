@@ -62,7 +62,7 @@ Item {
   readonly property var openWorkout: Model.openWorkout(sessions)
   readonly property string lastWorkoutAt: Model.lastFinishedAt(sessions)
   readonly property int sessionsThisWeek: statistics.sessionsThisWeek
-  readonly property real weekVolumeKg: Model.currentWeekVolume(statistics.weeklyVolume, new Date())
+  readonly property real weekVolumeKg: Model.currentWeekVolume(statistics.weeklyVolume, statistics.thisWeekStart, new Date())
   readonly property var bodyEntries: statistics.bodyWeight
   readonly property var bodyChangeKg: statistics.bodyWeightChangeKg
   readonly property var streak: statistics.streak

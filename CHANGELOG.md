@@ -11,6 +11,12 @@ project uses [Semantic Versioning](https://semver.org/).
   never follows another agent window (`omarchy-agent`, the console agent, another
   plugin's agent) that opens while the coach is starting, and its close button never
   closes one.
+- This week's volume follows the Setrai profile time zone. Near midnight at the
+  start or end of a week it showed the wrong week's volume, because the plugin
+  used the UTC week. Needs Setrai v0.11.0 or later; with an older Setrai
+  the plugin keeps using the UTC week.
+- The show-stats and weekly-review skills take the current week from the
+  server instead of assuming UTC.
 
 ## [v0.8.0] - 2026-11-24
 

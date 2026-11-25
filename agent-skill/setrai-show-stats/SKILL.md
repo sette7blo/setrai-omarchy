@@ -25,7 +25,7 @@ real location.
 ```json
 {
   "statistics": {
-    "trainingFrequency": { "totalSessions": 84, "thisWeek": 2 },
+    "trainingFrequency": { "totalSessions": 84, "thisWeekStart": "2026-11-23", "thisWeek": 2 },
     "totalVolume": 512340,
     "weeklyVolume": [ { "weekStart": "2026-11-09", "volume": 15200 } ],
     "volumeByExercise": [ ... ],
@@ -45,8 +45,11 @@ real location.
 ```
 
 - Volumes are in kg (weight x reps over completed sets).
-- `weeklyVolume` is oldest first, keyed by the Monday (UTC) of each week.
-  Weeks without training are left out, so a missing week means 0.
+- Days and weeks follow the profile time zone (`timeZone` in the response).
+- `weeklyVolume` is oldest first, keyed by the Monday of each week.
+  `trainingFrequency.thisWeekStart` is the current week's key: use it to find
+  this week's entry instead of working the date out yourself. Weeks without
+  training are left out, so a missing week means 0.
 - `bodyWeight` is oldest first. `bodyWeightChangeKg` is latest minus first
   entry, or `null` when there are no entries.
 

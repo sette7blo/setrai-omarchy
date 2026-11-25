@@ -289,6 +289,7 @@ function parseStatistics(text) {
   return {
     weeklyVolume: weekly,
     sessionsThisWeek: finiteOrNull(freq.thisWeek) || 0,
+    thisWeekStart: typeof freq.thisWeekStart === "string" ? freq.thisWeekStart : "",
     bodyWeight: body,
     bodyWeightChangeKg: finiteOrNull(stats.bodyWeightChangeKg),
     streak: parseStreak(stats.trainingStreak)
@@ -367,7 +368,8 @@ function parseTimestamp(value) {
   return isNaN(parsed.getTime()) ? null : parsed
 }
 
-// Monday-based UTC week key, the same key Setrai uses for weeklyVolume.
+// Monday-based UTC week key. Only a fallback for Setrai before v0.11.0, which
+// bucketed weeks in UTC and did not report thisWeekStart.
 function weekKey(date) {
   var start = new Date(Date.UTC(
     date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()
@@ -378,8 +380,10 @@ function weekKey(date) {
 }
 
 // The server omits weeks without volume, so a missing current week is 0.
-function currentWeekVolume(weeklyVolume, now) {
-  var key = weekKey(now || new Date())
+// thisWeekStart is the server's week in the profile time zone; QML has no
+// Intl, so the plugin cannot work that week out itself.
+function currentWeekVolume(weeklyVolume, thisWeekStart, now) {
+  var key = thisWeekStart || weekKey(now || new Date())
   var list = Array.isArray(weeklyVolume) ? weeklyVolume : []
   for (var i = 0; i < list.length; i++) {
     if (list[i].weekStart === key) return list[i].volume
