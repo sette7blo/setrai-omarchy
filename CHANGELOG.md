@@ -6,6 +6,10 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- The coach dock closes when you close the coach terminal yourself. It could stay open
+  because it checked a window list that had not caught up with the close yet.
+
 ## [v0.8.1] - 2026-11-25
 
 ### Fixed
