@@ -6,6 +6,8 @@ project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.8.2] - 2026-11-25
+
 ### Fixed
 - The coach dock closes when you close the coach terminal yourself. It could stay open
   because it checked a window list that had not caught up with the close yet.
@@ -211,7 +213,8 @@ First tagged release. Requires Setrai v0.8.0 or newer.
   body-weight switch.
 - Use of the `/api/omarchy/snapshot` endpoint.
 
-[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.2...HEAD
+[v0.8.2]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.1...v0.8.0
 [v0.7.1]: https://github.com/sette7blo/setrai-omarchy/compare/v0.7.0...v0.7.1
