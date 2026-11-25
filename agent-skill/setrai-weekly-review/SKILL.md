@@ -40,7 +40,9 @@ real location.
 5. `setrai-read /api/profile` → `trainingGoal`, `weightUnit` and
    `targetWeightKg`, so the advice fits the goal.
 
-"The week" is the current Monday-to-Sunday week by default. If it has no
+"The week" is the current Monday-to-Sunday week by default, in the profile
+time zone: it starts on `trainingFrequency.thisWeekStart` from the statistics
+response. If it has no
 finished session yet, review the previous week and say so.
 
 ## What to report
